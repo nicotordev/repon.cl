@@ -1,0 +1,676 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client"
+  // Explicitly define output path, e.g., to match the init flag in Step 3
+  output   = "../src/lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UnitOfMeasure {
+  UNIT
+  GRAM
+  KILOGRAM
+  MILLILITER
+  LITER
+}
+
+enum StockLotSource {
+  PURCHASE
+  MANUAL
+  ADJUSTMENT
+  RETURN
+}
+
+enum InventoryAdjustmentReason {
+  COUNT_CORRECTION
+  DAMAGE
+  EXPIRED
+  THEFT
+  TRANSFER_OUT
+  TRANSFER_IN
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  DEBIT
+  CREDIT
+  TRANSFER
+  OTHER
+}
+
+enum SaleChannel {
+  IN_STORE
+  DELIVERY
+  ONLINE
+  OTHER
+}
+
+enum DocumentType {
+  BOLETA_ELECTRONICA
+  BOLETA_EXENTA
+  NOTA_CREDITO
+  OTHER
+}
+
+enum SiiSubmissionStatus {
+  PENDING
+  SENT
+  ACCEPTED
+  REJECTED
+  ERROR
+}
+
+enum VoiceActionType {
+  CREATE_SALE
+  CREATE_PURCHASE
+  ADD_STOCK
+  ADJUST_STOCK
+  MARK_EXPIRED
+  SET_PRICE
+  CREATE_ALERT
+  ASK_METRIC
+  OTHER
+}
+
+enum VoiceActionStatus {
+  PENDING
+  EXECUTED
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  clerkId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships   StoreMember[]
+  voiceSessions VoiceSession[]
+
+  @@index([createdAt])
+}
+
+model Store {
+  id       String  @id @default(cuid())
+  name     String
+  rut      String? // RUT del contribuyente (store owner / empresa)
+  address  String?
+  timezone String  @default("America/Santiago")
+  currency String  @default("CLP")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members   StoreMember[]
+  products  Product[]
+  suppliers Supplier[]
+  customers Customer[]
+
+  purchases      Purchase[]
+  sales          Sale[]
+  adjustments    InventoryAdjustment[]
+  documents      TaxDocument[]
+  dailySummaries DailySalesSummary[]
+
+  alerts           StoreAlert[]
+  voiceSessions    VoiceSession[]
+  creditAccounts   CreditAccount[]
+  stockLots        StockLot[]
+  stockAllocations StockAllocation[]
+  siiSubmissions   SiiSubmission[]
+  productAlerts    ProductAlert[]
+  voiceActions     VoiceAction[]
+
+  @@index([name])
+}
+
+model StoreMember {
+  id      String @id @default(cuid())
+  storeId String
+  userId  String
+  role    String @default("OWNER") // OWNER | ADMIN | STAFF (string flexible)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, userId])
+  @@index([userId])
+  @@index([storeId])
+}
+
+model Product {
+  id      String @id @default(cuid())
+  storeId String
+
+  name     String
+  brand    String?
+  category String?
+  uom      UnitOfMeasure @default(UNIT)
+
+  // Precio de venta "normal" (bruto, incluye IVA) en CLP por defecto.
+  // Puedes tener pricing avanzado después (listas, promos), pero esto cubre MVP.
+  salePriceGross Int?
+
+  // Si el producto está afecto a IVA (19%) o es exento
+  vatRateBps  Int     @default(1900) // 1900 = 19.00% en basis points
+  isVatExempt Boolean @default(false)
+
+  // Config de expiración
+  isPerishable         Boolean @default(false)
+  defaultShelfLifeDays Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  barcodes             ProductBarcode[]
+  stockLots            StockLot[]
+  purchaseItems        PurchaseItem[]
+  saleItems            SaleItem[]
+  alerts               ProductAlert[]
+  stockAllocations     StockAllocation[]
+  inventoryAdjustments InventoryAdjustment[]
+
+  @@index([storeId])
+  @@index([storeId, name])
+}
+
+model ProductBarcode {
+  id        String @id @default(cuid())
+  productId String
+
+  // EAN/UPC u otro
+  code String
+
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, code])
+  @@index([code])
+}
+
+model Supplier {
+  id      String @id @default(cuid())
+  storeId String
+
+  name  String
+  rut   String?
+  phone String?
+  email String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+
+  @@index([storeId])
+  @@index([storeId, name])
+}
+
+model Customer {
+  id      String @id @default(cuid())
+  storeId String
+
+  name  String
+  rut   String?
+  phone String?
+  email String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  creditAccount CreditAccount?
+  sales         Sale[]
+
+  @@index([storeId])
+  @@index([storeId, name])
+}
+
+model CreditAccount {
+  id         String @id @default(cuid())
+  storeId    String
+  customerId String @unique
+
+  creditLimit Int @default(0) // CLP
+  balance     Int @default(0) // saldo actual CLP (positivo = debe)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  transactions CreditTransaction[]
+
+  @@index([storeId])
+}
+
+model CreditTransaction {
+  id              String @id @default(cuid())
+  creditAccountId String
+
+  // +aumenta deuda, -reduce deuda
+  amount     Int
+  note       String?
+  occurredAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  creditAccount CreditAccount @relation(fields: [creditAccountId], references: [id], onDelete: Cascade)
+
+  @@index([creditAccountId, occurredAt])
+}
+
+model Purchase {
+  id         String  @id @default(cuid())
+  storeId    String
+  supplierId String?
+
+  occurredAt    DateTime @default(now())
+  invoiceNumber String?
+  notes         String?
+
+  // Totales (en CLP). Guardar ambos simplifica reportes.
+  totalNet   Int?
+  totalVat   Int?
+  totalGross Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  items PurchaseItem[]
+  lots  StockLot[] // lotes que entran por esta compra
+
+  @@index([storeId, occurredAt])
+  @@index([supplierId])
+}
+
+model PurchaseItem {
+  id         String @id @default(cuid())
+  purchaseId String
+  productId  String
+
+  quantity      Int
+  unitCostNet   Int? // costo neto unitario
+  unitCostGross Int? // costo bruto unitario (si viene así)
+
+  // impuestos por ítem (opcional, para exactitud)
+  vatRateBps  Int?
+  isVatExempt Boolean?
+
+  createdAt DateTime @default(now())
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([purchaseId])
+  @@index([productId])
+}
+
+model StockLot {
+  id        String @id @default(cuid())
+  storeId   String
+  productId String
+
+  source     StockLotSource @default(PURCHASE)
+  purchaseId String?
+
+  // Cantidades
+  quantityIn  Int
+  quantityOut Int @default(0)
+
+  // Costeo (para margen/CMV)
+  unitCostNet   Int?
+  unitCostGross Int?
+
+  // Expiración
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  allocations          StockAllocation[]
+  saleItems            SaleItemLot[]
+  inventoryAdjustments InventoryAdjustment[]
+
+  @@index([storeId, productId])
+  @@index([storeId, expiresAt])
+  @@index([purchaseId])
+}
+
+model StockAllocation {
+  id        String @id @default(cuid())
+  storeId   String
+  productId String
+  lotId     String
+
+  // Reserva/uso de stock (para ventas, ajustes, etc.)
+  quantity Int
+
+  // “owner” flexible: link a saleItem o adjustment en un paso posterior.
+  // En MVP puedes usarlo solo para trackear consumos por lotes.
+  referenceType String?
+  referenceId   String?
+
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  store   Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  lot     StockLot @relation(fields: [lotId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, occurredAt])
+  @@index([lotId])
+  @@index([referenceType, referenceId])
+}
+
+model Sale {
+  id         String  @id @default(cuid())
+  storeId    String
+  customerId String?
+
+  occurredAt    DateTime      @default(now())
+  channel       SaleChannel   @default(IN_STORE)
+  paymentMethod PaymentMethod @default(CASH)
+
+  notes String?
+
+  // Totales (CLP)
+  totalNet   Int?
+  totalVat   Int?
+  totalGross Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  items    SaleItem[]
+  document TaxDocument?
+
+  @@index([storeId, occurredAt])
+  @@index([customerId])
+}
+
+model SaleItem {
+  id        String @id @default(cuid())
+  saleId    String
+  productId String
+
+  quantity       Int
+  unitPriceGross Int // precio cobrado (bruto)
+  vatRateBps     Int     @default(1900)
+  isVatExempt    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  lots SaleItemLot[]
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model SaleItemLot {
+  id         String @id @default(cuid())
+  saleItemId String
+  lotId      String
+  quantity   Int
+
+  createdAt DateTime @default(now())
+
+  saleItem SaleItem @relation(fields: [saleItemId], references: [id], onDelete: Cascade)
+  lot      StockLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  @@unique([saleItemId, lotId])
+  @@index([lotId])
+}
+
+model InventoryAdjustment {
+  id        String @id @default(cuid())
+  storeId   String
+  productId String
+
+  reason InventoryAdjustmentReason @default(OTHER)
+  note   String?
+
+  // + incrementa stock, - disminuye stock
+  quantityDelta Int
+
+  // opcional: link al lote afectado o crear uno nuevo
+  lotId String?
+
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  store   Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  lot     StockLot? @relation(fields: [lotId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, occurredAt])
+  @@index([productId])
+  @@index([lotId])
+}
+
+model TaxDocument {
+  id      String  @id @default(cuid())
+  storeId String
+  saleId  String? @unique
+
+  type     DocumentType @default(BOLETA_ELECTRONICA)
+  folio    String? // asignado por SII/CAF, si aplica
+  issuedAt DateTime     @default(now())
+
+  // XML firmado (o hash + storage pointer si no quieres guardar el XML completo)
+  xml       String?
+  xmlSha256 String?
+
+  // Totales (CLP)
+  totalNet   Int?
+  totalVat   Int?
+  totalGross Int?
+
+  // Estado SII
+  siiStatus  SiiSubmissionStatus @default(PENDING)
+  siiTrackId String?
+  siiMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sale  Sale? @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
+  submissions SiiSubmission[]
+
+  @@index([storeId, issuedAt])
+  @@index([storeId, siiStatus])
+}
+
+model SiiSubmission {
+  id            String @id @default(cuid())
+  storeId       String
+  taxDocumentId String
+
+  status      SiiSubmissionStatus @default(PENDING)
+  trackId     String?
+  requestAt   DateTime            @default(now())
+  responseAt  DateTime?
+  responseRaw String? // guarda respuesta textual si quieres auditar
+
+  createdAt DateTime @default(now())
+
+  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  taxDocument TaxDocument @relation(fields: [taxDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, requestAt])
+  @@index([taxDocumentId])
+}
+
+model DailySalesSummary {
+  id      String @id @default(cuid())
+  storeId String
+
+  // Día local de la tienda (guardado como DateTime a medianoche local si quieres)
+  day DateTime
+
+  // Totales agregados
+  salesCount Int @default(0)
+  totalNet   Int @default(0)
+  totalVat   Int @default(0)
+  totalGross Int @default(0)
+
+  // RVD / resumen diario (si aplica)
+  rvdXml     String?
+  rvdSha256  String?
+  siiStatus  SiiSubmissionStatus @default(PENDING)
+  siiTrackId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, day])
+  @@index([storeId, day])
+  @@index([storeId, siiStatus])
+}
+
+model StoreAlert {
+  id      String @id @default(cuid())
+  storeId String
+
+  type     String // STOCK_LOW, EXPIRY_SOON, ANOMALY, CASHFLOW_WARNING, etc.
+  title    String
+  message  String
+  severity Int    @default(1) // 1..5
+
+  // opcional: para deep-link
+  entityType String?
+  entityId   String?
+
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, isRead])
+  @@index([storeId, createdAt])
+}
+
+model ProductAlert {
+  id        String @id @default(cuid())
+  storeId   String
+  productId String
+
+  type     String // EXPIRY_SOON, STOCK_LOW, PRICE_DROP, etc.
+  message  String
+  severity Int    @default(1)
+
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, isActive])
+  @@index([productId, isActive])
+}
+
+model VoiceSession {
+  id      String  @id @default(cuid())
+  storeId String
+  userId  String?
+
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  locale String  @default("es-CL")
+  device String? // android, ios, web
+
+  createdAt DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  transcripts VoiceTranscript[]
+  actions     VoiceAction[]
+
+  @@index([storeId, startedAt])
+  @@index([userId])
+}
+
+model VoiceTranscript {
+  id        String @id @default(cuid())
+  sessionId String
+
+  // audio -> texto
+  inputText  String
+  confidence Float?
+
+  // si usas STT (speech-to-text), guarda metadatos
+  audioSeconds Int?
+  provider     String? // whisper, google, etc.
+
+  createdAt DateTime @default(now())
+
+  session VoiceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+model VoiceAction {
+  id        String @id @default(cuid())
+  sessionId String
+  storeId   String
+
+  type   VoiceActionType
+  status VoiceActionStatus @default(PENDING)
+
+  // intención interpretada
+  intentName     String?
+  // JSON como string para evitar caer en "any" en DB y mantener compatibilidad.
+  // En TS lo validas con zod y lo serializas.
+  parametersJson String?
+
+  // resultado / error
+  resultJson   String?
+  errorMessage String?
+
+  createdAt  DateTime  @default(now())
+  executedAt DateTime?
+
+  session VoiceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  store   Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([type, status])
+}
