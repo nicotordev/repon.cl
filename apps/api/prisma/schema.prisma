@@ -84,18 +84,44 @@ enum VoiceActionStatus {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  clerkId   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  clerkId       String?
+  phone         String?       // Información adicional para AI: teléfono del usuario
+  birthDate     DateTime?     // Fecha de nacimiento, podría servir para personalización
+  locale        String?       // Preferencia de idioma o localización
+  avatarUrl     String?       // Foto de perfil
+
+  // Relación uno a uno con las preferencias del usuario
+  preferences   UserPreferences?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  bannedAt      DateTime?
+  bannedReason  String?
+  bannedBy      String?
 
   memberships   StoreMember[]
   voiceSessions VoiceSession[]
 
   @@index([createdAt])
 }
+
+model UserPreferences {
+  id        String @id @default(cuid())
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String @unique
+
+  // Ejemplo de preferencias del usuario:
+  notificationsEnabled Boolean? @default(true) // Si el usuario quiere notificaciones
+  theme                String?                 // claro / oscuro / sistema
+  language             String?                 // Preferencia explícita de idioma (ej. "es-CL")
+
+  // Espacio para más opciones en el futuro...
+  custom               Json?                   // Opciones avanzadas/libres
+}
+
 
 model Store {
   id       String  @id @default(cuid())
