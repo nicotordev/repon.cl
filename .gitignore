@@ -1,37 +1,52 @@
 # Dependencies
-node_modules
+node_modules/
+.pnpm/
 
-# pnpm lock file - should be committed in a monorepo
-# pnpm-lock.yaml
+# pnpm lock file - should be committed, so do not ignore in monorepos
+# !pnpm-lock.yaml
 
-# Local environment variables
+# Environment variables
 .env
-.env.local
+.env.*
+!.env.example
 
-# IDE-specific files
-.idea
-.vscode
+# Editor & workspace settings
+.idea/
+.vscode/
 *.suo
 *.user
 *.casJITData
 *.vspscc
 *.vssscc
 
-# Build output directories
-dist
-build
-out
-.next   # For Next.js apps
-.cache
-public/build
+# Build outputs
+dist/
+build/
+out/
+.next/    # Next.js output
+.cache/
+public/build/
+coverage/
+.eslintcache
 
-# Logs and temporary files
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+*.log
 
-# OS-specific files
+# OS
 .DS_Store
 Thumbs.db
+
+# System files
+*.swp
+*.tmp
+
+# Optional: ignore app-specific generated files
+apps/**/node_modules/
+apps/**/dist/
+packages/**/node_modules/
+packages/**/dist/

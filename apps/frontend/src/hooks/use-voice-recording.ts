@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { VoiceRecordingState, VoiceResult, VoiceState } from "@/src/lib/voice-types";
+import type {
+  VoiceRecordingState,
+  VoiceResult,
+  VoiceState,
+} from "@/src/lib/voice-types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const VOICE_ENDPOINT = `${API_BASE}/api/v1/chat/voice`;
@@ -28,7 +32,8 @@ function setState(
 }
 
 export function useVoiceRecording() {
-  const [voiceState, setVoiceState] = useState<VoiceRecordingState>(INITIAL_STATE);
+  const [voiceState, setVoiceState] =
+    useState<VoiceRecordingState>(INITIAL_STATE);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -40,9 +45,12 @@ export function useVoiceRecording() {
     }
   }, []);
 
-  const transitionTo = useCallback((state: VoiceState, extra?: Partial<VoiceRecordingState>) => {
-    setVoiceState((prev) => setState(prev, { state, ...extra }));
-  }, []);
+  const transitionTo = useCallback(
+    (state: VoiceState, extra?: Partial<VoiceRecordingState>) => {
+      setVoiceState((prev) => setState(prev, { state, ...extra }));
+    },
+    [],
+  );
 
   const startRecording = useCallback(async () => {
     if (voiceState.state !== "IDLE") return;
@@ -53,7 +61,10 @@ export function useVoiceRecording() {
       chunksRef.current = [];
 
       const mimeType = getPreferredMime() || undefined;
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType } : undefined,
+      );
 
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
@@ -63,7 +74,8 @@ export function useVoiceRecording() {
       recorderRef.current = recorder;
       transitionTo("RECORDING", { error: null, result: null });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "No se pudo acceder al micrófono";
+      const message =
+        err instanceof Error ? err.message : "No se pudo acceder al micrófono";
       transitionTo("ERROR", { error: message });
     }
   }, [voiceState.state, transitionTo]);
@@ -79,7 +91,9 @@ export function useVoiceRecording() {
       recorder.onstop = async () => {
         const blob =
           chunksRef.current.length > 0
-            ? new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" })
+            ? new Blob(chunksRef.current, {
+                type: recorder.mimeType || "audio/webm",
+              })
             : null;
         chunksRef.current = [];
 
@@ -112,9 +126,10 @@ export function useVoiceRecording() {
             return;
           }
 
-          const result: VoiceResult = "transcript" in data
-            ? { transcript: data.transcript, response: data.response }
-            : { transcript: "", response: "" };
+          const result: VoiceResult =
+            "transcript" in data
+              ? { transcript: data.transcript, response: data.response }
+              : { transcript: "", response: "" };
 
           transitionTo("RESPONDING", { result, error: null });
         } catch (err) {

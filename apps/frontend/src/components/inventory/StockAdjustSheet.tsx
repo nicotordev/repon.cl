@@ -1,0 +1,99 @@
+"use client";
+
+import { useState } from "react";
+import { useInventoryStore } from "@/src/store/inventory.store";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/src/components/ui/sheet";
+import { Button } from "@/src/components/ui/button";
+import { Input } from "@/src/components/ui/input";
+import { Label } from "@/src/components/ui/label";
+import { useUIStore } from "@/src/store/ui.store";
+import { useAdjustStock } from "@/src/hooks/use-inventory";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+export function StockAdjustSheet() {
+  const open = useUIStore((s) => s.sheetsOpen.includes("adjust"));
+  const closeSheet = useUIStore((s) => s.closeSheet);
+  const selectedId = useInventoryStore((s) => s.selectedId);
+  const products = useInventoryStore((s) => s.products);
+  const setSelectedId = useInventoryStore((s) => s.setSelectedId);
+
+  const product = products.find((p) => p.id === selectedId);
+  const [value, setValue] = useState(product?.stock ?? 0);
+  
+  const adjustStock = useAdjustStock();
+
+  const handleOpenChange = (o: boolean) => {
+    if (!o) {
+      closeSheet("adjust");
+      setSelectedId(null);
+    } else if (product) {
+      setValue(product.stock ?? 0);
+    }
+  };
+
+  const handleSave = async () => {
+    if (selectedId != null && product) {
+      const currentStock = product.stock ?? 0;
+      const quantityDelta = value - currentStock;
+      
+      if (quantityDelta === 0) {
+        handleOpenChange(false);
+        return;
+      }
+
+      adjustStock.mutate({
+        productId: selectedId,
+        data: {
+          quantityDelta,
+          reason: quantityDelta > 0 ? "COUNT_CORRECTION" : "DAMAGE", // Simplified for now
+          note: "Ajuste manual desde la web",
+        }
+      }, {
+        onSuccess: () => {
+          toast.success("Stock actualizado correctamente");
+          handleOpenChange(false);
+        },
+        onError: (err) => {
+          toast.error(`Error al actualizar stock: ${err.message}`);
+        }
+      });
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent side="bottom">
+        <SheetHeader>
+          <SheetTitle>Ajustar stock — {product?.name ?? ""}</SheetTitle>
+        </SheetHeader>
+        <div className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <Label>Cantidad actual: {product?.stock ?? 0}</Label>
+            <Input
+              type="number"
+              min={0}
+              value={value}
+              onChange={(e) => setValue(Number(e.target.value) || 0)}
+              disabled={adjustStock.isPending}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)} disabled={adjustStock.isPending}>
+              Cancelar
+            </Button>
+            <Button className="flex-1" onClick={handleSave} disabled={adjustStock.isPending}>
+              {adjustStock.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Guardar
+            </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}

@@ -1,0 +1,46 @@
+
+# Next.js build output
+.next/
+out/
+.cache/
+dist/
+
+# Clerk configuration (can include secrets)
+/.clerk/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE directories
+.vscode/
+.idea/
+
+# Editor swap/backup files
+*.swp
+*.tmp
+
+# Dependency directories
+node_modules/
+
+# Coverage folder
+coverage/
+
+# Build output for public assets
+public/build/
+
+# ESLint cache
+.eslintcache

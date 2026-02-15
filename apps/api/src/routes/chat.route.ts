@@ -1,8 +1,8 @@
 import { Hono } from "hono";
-import chatService from "../services/chat.service.js";
+import { handleVoice } from "../services/voice.handler.js";
 
 const app = new Hono();
 
-app.post("/voice", chatService.voice);
+app.post("/voice", handleVoice);
 
 export default app;
