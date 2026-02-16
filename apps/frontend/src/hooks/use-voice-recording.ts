@@ -276,6 +276,7 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}) {
     result: voiceState.result,
     streamingTranscript: voiceState.streamingTranscript,
     streamingResponse: voiceState.streamingResponse,
+    streamingThought: voiceState.streamingThought,
     startRecording,
     stopRecording,
     reset,
