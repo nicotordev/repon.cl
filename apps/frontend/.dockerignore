@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.*
+.next
+out
+build
+
+# Env (se inyectan en runtime)
+.env*
+!.env.example
+
+# Git / IDE
+.git
+.gitignore
+*.md
+.cursor
+.vscode
+.idea
+
+# Debug / logs
+*.log
+npm-debug.log*
+.DS_Store
+coverage
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
