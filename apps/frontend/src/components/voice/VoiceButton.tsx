@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { MicIcon, SquareIcon } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { Spinner } from "@/src/components/ui/spinner";
 import { cn } from "@/src/lib/utils";
 import { useVoiceRecording } from "@/src/hooks/use-voice-recording";
 import type { VoiceState } from "@/src/lib/voice-types";
+import { useConversationOptional } from "@/src/contexts/ConversationContext";
 
 function stateLabel(state: VoiceState): string {
   switch (state) {
@@ -26,14 +27,33 @@ function stateLabel(state: VoiceState): string {
 }
 
 export function VoiceButton({ className }: { className?: string }) {
+  const conversation = useConversationOptional();
   const {
     state,
     error,
     result,
+    streamingTranscript,
+    streamingResponse,
     startRecording,
     stopRecording,
     reset,
   } = useVoiceRecording();
+
+  const lastResultRef = useRef<typeof result>(null);
+
+  // When we get a voice result, add it to the conversation and open the chat
+  useEffect(() => {
+    if (!result || !conversation) return;
+    if (result === lastResultRef.current) return;
+    lastResultRef.current = result;
+    const userText = result.transcript?.trim() ?? "";
+    const assistantText = result.response?.trim() ?? "";
+    if (userText || assistantText) {
+      conversation.addTurn(userText || "(audio)", assistantText || "(sin respuesta)");
+      conversation.openChat();
+    }
+    reset();
+  }, [result, conversation, reset]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -72,7 +92,7 @@ export function VoiceButton({ className }: { className?: string }) {
         size="lg"
         className={cn(
           "touch-none select-none rounded-full size-14 transition-all",
-          isRecording && "scale-110 bg-red-600 hover:bg-red-600",
+          isRecording && "scale-110 bg-destructive text-primary-foreground hover:bg-destructive/90",
         )}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
@@ -106,23 +126,28 @@ export function VoiceButton({ className }: { className?: string }) {
       >
         {error ?? stateLabel(state)}
       </span>
-      {result && (result.transcript || result.response) && (
-        <div className="w-full max-w-md space-y-2 rounded-lg border bg-muted/50 p-3 text-sm">
-          {result.transcript && (
+      {!conversation && (streamingTranscript || streamingResponse || (result && (result.transcript || result.response))) && (
+        <div className="w-full max-w-md space-y-2 rounded-lg border border-border bg-muted/50 p-3 text-sm">
+          {(streamingTranscript ?? result?.transcript) && (
             <p>
               <span className="font-medium text-muted-foreground">Tú: </span>
-              {result.transcript}
+              {streamingTranscript ?? result?.transcript}
             </p>
           )}
-          {result.response && (
+          {(streamingResponse ?? result?.response) && (
             <p>
               <span className="font-medium text-muted-foreground">Respuesta: </span>
-              {result.response}
+              {streamingResponse ?? result?.response}
+              {state === "PROCESSING" && streamingResponse && (
+                <span className="inline-block w-2 h-4 ml-0.5 bg-muted-foreground/60 animate-pulse" aria-hidden />
+              )}
             </p>
           )}
-          <Button variant="ghost" size="sm" onClick={reset}>
-            Nueva grabación
-          </Button>
+          {result && (
+            <Button variant="ghost" size="sm" onClick={reset}>
+              Nueva grabación
+            </Button>
+          )}
         </div>
       )}
     </div>

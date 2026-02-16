@@ -29,6 +29,18 @@ export const VoiceActionNameSchema = z.enum([
   "create_purchase",
   "adjust_stock",
   "create_alert",
+  "create_product",
+  "list_products",
+  "get_product",
+  "update_product",
+  "list_stock_lots",
+  "list_sales",
+  "list_purchases",
+  "list_suppliers",
+  "list_customers",
+  "create_supplier",
+  "create_customer",
+  "create_product_alert",
   "other",
 ]);
 
@@ -54,6 +66,19 @@ export function mapActionNameToType(
       return VoiceActionType.CREATE_ALERT;
     case "ask_metric":
       return VoiceActionType.ASK_METRIC;
+    case "create_product_alert":
+      return VoiceActionType.CREATE_ALERT;
+    case "create_product":
+    case "list_products":
+    case "get_product":
+    case "update_product":
+    case "list_stock_lots":
+    case "list_sales":
+    case "list_purchases":
+    case "list_suppliers":
+    case "list_customers":
+    case "create_supplier":
+    case "create_customer":
     case "other":
     default:
       return VoiceActionType.OTHER;

@@ -2,6 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import { appName } from "@/src/lib/env";
+import Logo from "../common/logo";
+import { Button } from "../ui/button";
+import { Bell } from "lucide-react";
 
 const titles: Record<string, string> = {
   "/pos": "Caja",
@@ -15,11 +18,16 @@ export function Topbar() {
   const title = pathname ? titles[pathname] ?? pathname.slice(1) : "";
 
   return (
-    <header className="sticky top-0 z-40 flex h-12 items-center border-b bg-background px-4">
-      <h1 className="text-lg font-semibold">{appName}</h1>
-      {title && (
-        <span className="ml-2 text-muted-foreground text-sm">{title}</span>
-      )}
+    <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-background px-4">
+      <Logo />
+      <div className="flex items-center gap-2">
+        {title && (
+          <span className="text-muted-foreground text-sm">{title}</span>
+        )}
+        <Button variant="outline" size="icon">
+          <Bell className="size-4" />
+        </Button>
+      </div>
     </header>
   );
 }

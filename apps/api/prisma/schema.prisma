@@ -102,6 +102,9 @@ model User {
   bannedReason  String?
   bannedBy      String?
 
+
+  onboardingCompleted DateTime?
+
   memberships   StoreMember[]
   voiceSessions VoiceSession[]
 
@@ -194,6 +197,9 @@ model Product {
   // Config de expiración
   isPerishable         Boolean @default(false)
   defaultShelfLifeDays Int?
+
+  // Imagen del producto (URL en R2 u otro storage)
+  imageUrl String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,9 +1,68 @@
-import 'server-only';
-import { auth } from '@clerk/nextjs/server';
+import "server-only";
+import { auth } from "@clerk/nextjs/server";
 
 const API_URL = process.env.API_URL;
 
-export type UnitOfMeasure = "UNIT" | "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER";
+type ErrorPayload = {
+  message?: string;
+  error?: string;
+};
+
+export class BackendError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "BackendError";
+    this.status = status;
+  }
+}
+
+
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  clerkId: string | null;
+  phone: string | null;
+  birthDate: string | null;
+  locale: string | null;
+  avatarUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  bannedAt: Date | null;
+  bannedReason: string | null;
+  bannedBy: string | null;
+  onboardingCompleted: string | null;
+}
+
+export interface OnboardingProfileInput {
+  name?: string | null;
+  phone?: string | null;
+  birthDate?: string | null;
+  locale?: string | null;
+  avatarUrl?: string | null;
+  completeOnboarding?: boolean;
+  preferences?: {
+    notificationsEnabled?: boolean;
+    theme?: string | null;
+    language?: string | null;
+  };
+  store?: {
+    name: string;
+    rut?: string | null;
+    address?: string | null;
+    timezone?: string | null;
+    currency?: string | null;
+  };
+}
+
+export type UnitOfMeasure =
+  | "UNIT"
+  | "GRAM"
+  | "KILOGRAM"
+  | "MILLILITER"
+  | "LITER";
 
 export type InventoryAdjustmentReason =
   | "COUNT_CORRECTION"
@@ -53,6 +112,7 @@ export interface Product {
   isVatExempt: boolean;
   isPerishable: boolean;
   defaultShelfLifeDays?: number;
+  imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   stock?: number;
@@ -82,6 +142,7 @@ export interface UpdateProductInput {
   salePriceGross?: number;
   isPerishable?: boolean;
   defaultShelfLifeDays?: number;
+  imageUrl?: string | null;
 }
 
 export interface AdjustStockInput {
@@ -94,12 +155,12 @@ async function fetcher<T>(path: string, options: RequestInit = {}): Promise<T> {
   const { getToken } = await auth();
   const token = await getToken();
 
-  // Ensure header is not null
   const headers = new Headers(options.headers);
+
+  headers.set("Content-Type", "application/json");
   if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+    headers.set("Authorization", `Bearer ${token}`);
   }
-  headers.set('Content-Type', 'application/json');
 
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -107,8 +168,17 @@ async function fetcher<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-    throw new Error(error.message || response.statusText);
+    const error = await response
+      .json()
+      .catch(() => ({} as ErrorPayload));
+
+    const message =
+      (typeof error.message === "string" && error.message) ||
+      (typeof error.error === "string" && error.error) ||
+      response.statusText ||
+      "An error occurred";
+
+    throw new BackendError(response.status, message);
   }
 
   return response.json();
@@ -117,13 +187,22 @@ async function fetcher<T>(path: string, options: RequestInit = {}): Promise<T> {
 const backend = {
   // User
   getUser: async () => {
-    return fetcher<any>('/api/v1/user'); // Keeping any here for now as User type isn't defined in this context yet
+    return fetcher<User>("/api/v1/user");
+  },
+
+  updateUserProfile: async (data: OnboardingProfileInput) => {
+    return fetcher<User>("/api/v1/user", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
   },
 
   // Inventory
   inventory: {
     getProducts: async (q?: string) => {
-      const url = q ? `/api/v1/inventory?q=${encodeURIComponent(q)}` : '/api/v1/inventory';
+      const url = q
+        ? `/api/v1/inventory?q=${encodeURIComponent(q)}`
+        : "/api/v1/inventory";
       return fetcher<Product[]>(url);
     },
 
@@ -132,32 +211,32 @@ const backend = {
     },
 
     createProduct: async (data: CreateProductInput) => {
-      return fetcher<Product>('/api/v1/inventory', {
-        method: 'POST',
+      return fetcher<Product>("/api/v1/inventory", {
+        method: "POST",
         body: JSON.stringify(data),
       });
     },
 
     updateProduct: async (id: string, data: UpdateProductInput) => {
       return fetcher<Product>(`/api/v1/inventory/${id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(data),
       });
     },
 
     adjustStock: async (id: string, data: AdjustStockInput) => {
       return fetcher<InventoryAdjustment>(`/api/v1/inventory/${id}/adjust`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(data),
       });
     },
 
     getLots: async () => {
-      return fetcher<StockLot[]>('/api/v1/inventory/lots');
+      return fetcher<StockLot[]>("/api/v1/inventory/lots");
     },
 
     getAdjustments: async () => {
-      return fetcher<InventoryAdjustment[]>('/api/v1/inventory/adjustments');
+      return fetcher<InventoryAdjustment[]>("/api/v1/inventory/adjustments");
     },
   },
 };

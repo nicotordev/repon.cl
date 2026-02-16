@@ -37,7 +37,7 @@ export function ProductFiltersSheet() {
           <div className="space-y-2">
             <Label>Categoría</Label>
             <select
-              className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
+              className="flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground"
               value={filters.category ?? ""}
               onChange={(e) =>
                 setFilters({ category: e.target.value || null })

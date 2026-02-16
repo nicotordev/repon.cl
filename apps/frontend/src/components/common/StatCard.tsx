@@ -10,7 +10,7 @@ export function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <p className="text-muted-foreground text-sm">{label}</p>
       <p className="text-2xl font-semibold">{value}</p>
       {sub != null && (

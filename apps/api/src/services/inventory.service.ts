@@ -22,6 +22,7 @@ export interface UpdateProductInput {
   salePriceGross?: number;
   isPerishable?: boolean;
   defaultShelfLifeDays?: number;
+  imageUrl?: string | null;
 }
 
 export interface AdjustStockInput {
@@ -195,6 +196,7 @@ const inventoryService = {
         salePriceGross: data.salePriceGross,
         isPerishable: data.isPerishable,
         defaultShelfLifeDays: data.defaultShelfLifeDays,
+        imageUrl: data.imageUrl !== undefined ? data.imageUrl : undefined,
       },
     });
   },

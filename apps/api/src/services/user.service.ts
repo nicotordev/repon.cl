@@ -1,5 +1,11 @@
 import prisma from "../lib/prisma.js";
 import type { Prisma } from "../lib/generated/prisma/client.js";
+import { createClerkClient } from "@clerk/backend";
+
+const clerk = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+  publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+});
 
 // Custom error for more descriptive user-related issues
 class UserServiceError extends Error {
@@ -15,11 +21,42 @@ class UserServiceError extends Error {
 
 // The User table requires email as a unique identifier. Use 'whereUnique' with { email } or { id } as appropriate.
 const userService = {
-  async getUserByClerkId(clerkId: string) {
+  async getOrCreateUserByClerkId(clerkId: string) {
+    // Now named getOrCreateUserByClerkId: Get the user, or create if not found.
     try {
-      const user = await prisma.user.findFirst({
+      const clerkUser = await clerk.users.getUser(clerkId);
+
+      if (!clerkUser) {
+        throw new UserServiceError("Clerk user not found");
+      }
+
+      let user = await prisma.user.findFirst({
         where: { clerkId },
       });
+
+      // If user not found in our database, create it from Clerk data
+      if (!user) {
+        // Use Clerk user primaryEmailAddress and name if present
+        const email = clerkUser?.emailAddresses?.[0]?.emailAddress;
+        const name = clerkUser?.firstName
+          ? `${clerkUser.firstName}${clerkUser.lastName ? ` ${clerkUser.lastName}` : ""}`
+          : undefined;
+
+        if (!email) {
+          throw new UserServiceError(
+            "Clerk user does not have a primary email address"
+          );
+        }
+
+        user = await prisma.user.create({
+          data: {
+            email,
+            name,
+            clerkId,
+          },
+        });
+      }
+
       return user;
     } catch (error) {
       console.error("[UserService] Error in getUserByClerkId:", error, "Input clerkId:", clerkId);
@@ -71,6 +108,35 @@ const userService = {
       }
       console.error("[UserService] Error in updateUser:", error, "Where:", where, "Update data:", data);
       throw new UserServiceError("Failed to update user.", error);
+    }
+  },
+
+  /** Update profile image in Clerk and our DB. file: Blob or File from multipart. */
+  async updateProfileImage(clerkId: string, file: Blob | File): Promise<string> {
+    const clerkUser = await clerk.users.updateUserProfileImage(clerkId, { file });
+    const imageUrl =
+      (clerkUser as { imageUrl?: string }).imageUrl ??
+      (clerkUser as { image_url?: string }).image_url ??
+      null;
+    const dbUser = await prisma.user.findFirst({ where: { clerkId } });
+    if (dbUser && imageUrl) {
+      await prisma.user.update({
+        where: { id: dbUser.id },
+        data: { avatarUrl: imageUrl },
+      });
+    }
+    return imageUrl ?? "";
+  },
+
+  /** Remove profile image in Clerk and set avatarUrl to null in DB. */
+  async deleteProfileImage(clerkId: string): Promise<void> {
+    await clerk.users.deleteUserProfileImage(clerkId);
+    const dbUser = await prisma.user.findFirst({ where: { clerkId } });
+    if (dbUser) {
+      await prisma.user.update({
+        where: { id: dbUser.id },
+        data: { avatarUrl: null },
+      });
     }
   },
 };

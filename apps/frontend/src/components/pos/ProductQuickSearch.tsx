@@ -1,43 +1,86 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Input } from "@/src/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, ScanBarcode } from "lucide-react";
 import { useCartStore } from "@/src/store/cart.store";
-import { useInventoryStore } from "@/src/store/inventory.store";
 import { Button } from "@/src/components/ui/button";
-import { mockProducts } from "@/src/fixtures/products";
 import { formatMoney } from "@/src/lib/money";
+import { useInventory } from "@/src/hooks/use-inventory";
+import { BarcodeScannerSheet } from "@/src/components/pos/BarcodeScannerSheet";
+import { toast } from "sonner";
 
 export function ProductQuickSearch() {
   const [q, setQ] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
-  const setProducts = useInventoryStore((s) => s.setProducts);
-  const products = useInventoryStore((s) => s.products);
+  const { data } = useInventory();
+  const products = data ?? [];
 
-  useEffect(() => {
-    if (products.length === 0) setProducts(mockProducts);
-  }, [products.length, setProducts]);
-  const filtered = q.trim()
-    ? products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q.toLowerCase()) ||
-          p.brand?.toLowerCase().includes(q.toLowerCase()) ||
-          p.barcodes?.some(b => b.code.toLowerCase().includes(q.toLowerCase()))
-      )
-    : products.slice(0, 8);
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return products.slice(0, 8);
+
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(term) ||
+        p.brand?.toLowerCase().includes(term) ||
+        p.barcodes?.some((b) => b.code.toLowerCase().includes(term))
+    );
+  }, [products, q]);
+
+  const handleBarcodeDetect = useCallback(
+    (code: string) => {
+      const normalized = code.trim();
+      const product = products.find((p) =>
+        p.barcodes?.some(
+          (b) => b.code === normalized || b.code.replace(/\s/g, "") === normalized.replace(/\s/g, "")
+        )
+      );
+      if (product) {
+        addItem({
+          productId: product.id,
+          name: product.name,
+          unitPriceCents: product.salePriceGross ?? 0,
+          quantity: 1,
+        });
+        toast.success(`${product.name} agregado al carrito`);
+      } else {
+        setQ(normalized);
+        toast.info("Código no encontrado. Busca o agrega el producto manualmente.");
+      }
+    },
+    [products, addItem]
+  );
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar producto o código..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar producto o código..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0"
+          onClick={() => setScannerOpen(true)}
+          aria-label="Escanear código de barras"
+        >
+          <ScanBarcode className="size-5" />
+        </Button>
       </div>
+      <BarcodeScannerSheet
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onDetect={handleBarcodeDetect}
+      />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {filtered.map((p) => (
           <Button

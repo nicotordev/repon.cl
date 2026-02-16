@@ -2,6 +2,14 @@ import { Hono } from "hono";
 import { getAuth } from "@hono/clerk-auth";
 import inventoryService from "../services/inventory.service.js";
 import { resolveStoreForUser } from "../services/store.service.js";
+import {
+  uploadProductImage,
+  isR2Configured,
+  isAcceptedImageType,
+  getMaxFileBytes,
+  deleteByPublicUrl,
+} from "../services/r2.service.js";
+import prisma from "../lib/prisma.js";
 import { z } from "zod";
 
 const app = new Hono();
@@ -88,6 +96,7 @@ const UpdateProductSchema = z.object({
   salePriceGross: z.number().int().positive().optional(),
   isPerishable: z.boolean().optional(),
   defaultShelfLifeDays: z.number().int().positive().optional(),
+  imageUrl: z.string().url().nullable().optional(),
 });
 
 app.patch("/:id", async (c) => {
@@ -105,6 +114,129 @@ app.patch("/:id", async (c) => {
   } catch (err) {
     return c.json({ error: "Failed to update product" }, 500);
   }
+});
+
+function inferImageType(filename: string): string {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  return "image/jpeg";
+}
+
+/**
+ * POST /inventory/:id/image – Upload product image (multipart). Requires R2 configured.
+ */
+app.post("/:id/image", async (c) => {
+  const store = await getStore(c);
+  if (!store) return c.json({ error: "Unauthorized or store not found" }, 401);
+
+  if (!isR2Configured()) {
+    return c.json(
+      { error: "Subida de imágenes no configurada (R2). Contacta al administrador." },
+      503
+    );
+  }
+
+  const productId = c.req.param("id");
+  const product = await prisma.product.findFirst({
+    where: { id: productId, storeId: store.id },
+    select: { id: true, imageUrl: true },
+  });
+  if (!product) return c.json({ error: "Product not found" }, 404);
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await c.req.parseBody()) as Record<string, unknown>;
+  } catch (e) {
+    console.error("[inventory.route] parseBody failed:", e);
+    return c.json({ error: "Cuerpo multipart inválido" }, 400);
+  }
+
+  const file = body["file"];
+  if (!file || typeof file === "string") {
+    return c.json({ error: "Falta el campo 'file' o no es un archivo" }, 400);
+  }
+
+  const raw = file as Blob & { type?: string; name?: string };
+  const size = raw.size ?? (raw as unknown as { length?: number }).length;
+  if (!size || size === 0) {
+    return c.json({ error: "El archivo está vacío" }, 400);
+  }
+  if (size > getMaxFileBytes()) {
+    return c.json(
+      { error: `Tamaño máximo ${Math.round(getMaxFileBytes() / 1024 / 1024)} MB` },
+      400
+    );
+  }
+
+  let type = (raw.type ?? "").trim();
+  const name =
+    typeof (raw as unknown as { name?: string }).name === "string"
+      ? (raw as unknown as { name: string }).name
+      : "image";
+  if (!type) type = inferImageType(name);
+  if (!isAcceptedImageType(type)) {
+    return c.json(
+      { error: "Formato no válido. Usa JPEG, PNG, WebP o GIF." },
+      400
+    );
+  }
+
+  const arrayBuffer =
+    typeof (raw as unknown as { arrayBuffer?: () => Promise<ArrayBuffer> }).arrayBuffer === "function"
+      ? await (raw as Blob).arrayBuffer()
+      : null;
+  if (!arrayBuffer) {
+    return c.json({ error: "No se pudo leer el archivo" }, 400);
+  }
+  const buffer = Buffer.from(arrayBuffer);
+
+  const imageUrl = await uploadProductImage({
+    storeId: store.id,
+    productId: product.id,
+    buffer,
+    contentType: type,
+    originalFilename: name,
+  });
+
+  if (!imageUrl) {
+    return c.json({ error: "Error al subir la imagen. Intenta de nuevo." }, 500);
+  }
+
+  // Opcional: borrar imagen anterior en R2 si era nuestra
+  if (product.imageUrl) {
+    await deleteByPublicUrl(product.imageUrl);
+  }
+
+  const updated = await inventoryService.updateProduct(store.id, productId, {
+    imageUrl,
+  });
+  return c.json(updated);
+});
+
+/**
+ * DELETE /inventory/:id/image – Remove product image (DB + R2).
+ */
+app.delete("/:id/image", async (c) => {
+  const store = await getStore(c);
+  if (!store) return c.json({ error: "Unauthorized or store not found" }, 401);
+
+  const productId = c.req.param("id");
+  const product = await prisma.product.findFirst({
+    where: { id: productId, storeId: store.id },
+    select: { id: true, imageUrl: true },
+  });
+  if (!product) return c.json({ error: "Product not found" }, 404);
+
+  if (product.imageUrl) {
+    await deleteByPublicUrl(product.imageUrl);
+  }
+
+  await inventoryService.updateProduct(store.id, productId, { imageUrl: null });
+  const updated = await inventoryService.getProduct(store.id, productId);
+  return c.json(updated);
 });
 
 const AdjustStockSchema = z.object({

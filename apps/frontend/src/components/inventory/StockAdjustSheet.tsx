@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useInventoryStore } from "@/src/store/inventory.store";
 import {
   Sheet,
@@ -15,25 +15,33 @@ import { useUIStore } from "@/src/store/ui.store";
 import { useAdjustStock } from "@/src/hooks/use-inventory";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import type { Product } from "@/src/lib/backend";
 
-export function StockAdjustSheet() {
+interface Props {
+  products: Product[];
+}
+
+export function StockAdjustSheet({ products }: Props) {
   const open = useUIStore((s) => s.sheetsOpen.includes("adjust"));
   const closeSheet = useUIStore((s) => s.closeSheet);
   const selectedId = useInventoryStore((s) => s.selectedId);
-  const products = useInventoryStore((s) => s.products);
   const setSelectedId = useInventoryStore((s) => s.setSelectedId);
 
   const product = products.find((p) => p.id === selectedId);
-  const [value, setValue] = useState(product?.stock ?? 0);
+  const [value, setValue] = useState(0);
   
   const adjustStock = useAdjustStock();
+
+  useEffect(() => {
+    if (open && product) {
+      setValue(product.stock ?? 0);
+    }
+  }, [open, product]);
 
   const handleOpenChange = (o: boolean) => {
     if (!o) {
       closeSheet("adjust");
       setSelectedId(null);
-    } else if (product) {
-      setValue(product.stock ?? 0);
     }
   };
 

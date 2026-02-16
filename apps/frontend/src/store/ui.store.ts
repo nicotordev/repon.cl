@@ -15,6 +15,7 @@ type UIState = {
     | "copilot"
     | "pending"
     | "actionReview"
+    | "productForm"
   )[];
   toasts: {
     id: string;

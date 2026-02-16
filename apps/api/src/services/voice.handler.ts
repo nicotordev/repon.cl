@@ -1,9 +1,8 @@
 /**
  * Voice request handler.
  *
- * Loop: audio in → transcribe → resolve context (store, session, history) →
- * LLM decides (answer | clarification | action) → execute actions if any →
- * build response → response out.
+ * Flow: audio in → transcribe → resolve context (store, session, history) →
+ * LLM stream with tools → stream NDJSON (meta, chunk, done) → log tool invocations when done.
  */
 import type { Context } from "hono";
 import { getAuth } from "@hono/clerk-auth";
@@ -22,8 +21,10 @@ import {
 } from "./voice.utils.js";
 import { getVoiceRequestContext } from "./voice-context.service.js";
 import { transcribeAudio } from "./transcription.service.js";
-import { runVoiceTurn } from "./voice-ai.service.js";
-import { executeVoiceAction } from "./voice-action.service.js";
+import {
+  createVoiceStream,
+  getToolInvocationsFromSteps,
+} from "./voice-ai.service.js";
 
 function jsonError(
   c: Context,
@@ -35,7 +36,7 @@ function jsonError(
 
 export async function handleVoice(c: Context): Promise<Response> {
   try {
-    const auth = getAuth(c);
+    const auth = await getAuth(c);
     const clerkUserId = auth?.userId;
     if (!clerkUserId) {
       return jsonError(c, 401, { error: "Unauthorized", code: "UNAUTHORIZED" });
@@ -79,7 +80,10 @@ export async function handleVoice(c: Context): Promise<Response> {
 
     if (!contextResult.ok) {
       return c.json(
-        { transcript: contextResult.payload.transcript, response: contextResult.payload.response },
+        {
+          transcript: contextResult.payload.transcript,
+          response: contextResult.payload.response,
+        },
         contextResult.status,
       );
     }
@@ -94,7 +98,11 @@ export async function handleVoice(c: Context): Promise<Response> {
         data: { sessionId: session.id, inputText: "", provider },
       });
       return c.json(
-        { sessionId: session.id, transcript: "", response: { type: "answer" as const, message: "" } },
+        {
+          sessionId: session.id,
+          transcript: "",
+          response: { type: "answer" as const, message: "" },
+        },
         200,
       );
     }
@@ -103,132 +111,97 @@ export async function handleVoice(c: Context): Promise<Response> {
       data: { sessionId: session.id, inputText: userText, provider },
     });
 
-    const turnResult = await runVoiceTurn({
-      storeContext,
-      userText,
-      conversationHistory: conversationHistory || undefined,
-    });
-
-    if (!turnResult.success) {
-      await prisma.voiceAction.create({
-        data: {
-          sessionId: session.id,
-          storeId: store.id,
-          type: mapActionNameToType("other"),
-          status: VoiceActionStatus.FAILED,
-          intentName: "invalid_model_output",
-          parametersJson: null,
-          resultJson: turnResult.raw ? JSON.stringify({ raw: turnResult.raw }) : null,
-          errorMessage: turnResult.message ?? undefined,
-        },
-      });
-      return c.json(
-        {
-          sessionId: session.id,
-          transcript: userText,
-          response: {
-            type: "answer" as const,
-            message:
-              "No entendí bien. ¿Puedes repetirlo más directo? (Ej: “agrega 10 cocas”)",
-          },
-        },
-        200,
-      );
-    }
-
-    const modelOut = turnResult.output;
-
-    if (modelOut.type === "answer") {
-      await prisma.voiceAction.create({
-        data: {
-          sessionId: session.id,
-          storeId: store.id,
-          type: mapActionNameToType("other"),
-          status: VoiceActionStatus.EXECUTED,
-          intentName: "answer",
-          parametersJson: null,
-          resultJson: JSON.stringify(modelOut),
-          executedAt: new Date(),
-        },
-      });
-      return c.json(
-        { sessionId: session.id, transcript: userText, response: modelOut },
-        200,
-      );
-    }
-
-    if (modelOut.type === "clarification") {
-      await prisma.voiceAction.create({
-        data: {
-          sessionId: session.id,
-          storeId: store.id,
-          type: mapActionNameToType("other"),
-          status: VoiceActionStatus.PENDING,
-          intentName: "clarification",
-          parametersJson: null,
-          resultJson: JSON.stringify(modelOut),
-        },
-      });
-      return c.json(
-        { sessionId: session.id, transcript: userText, response: modelOut },
-        200,
-      );
-    }
-
-    const actionNameParsed = VoiceActionNameSchema.safeParse(modelOut.action);
-    const actionName = actionNameParsed.success ? actionNameParsed.data : "other";
-
-    const actionRow = await prisma.voiceAction.create({
-      data: {
-        sessionId: session.id,
+    let streamResult: ReturnType<typeof createVoiceStream>;
+    try {
+      streamResult = createVoiceStream({
         storeId: store.id,
-        type: mapActionNameToType(actionName),
-        status: VoiceActionStatus.PENDING,
-        intentName: modelOut.action,
-        parametersJson: modelOut.parameters
-          ? JSON.stringify(modelOut.parameters)
-          : null,
-      },
-    });
-
-    const exec = await executeVoiceAction(store.id, modelOut);
-
-    if (!exec.ok) {
-      await prisma.voiceAction.update({
-        where: { id: actionRow.id },
-        data: {
-          status: VoiceActionStatus.FAILED,
-          errorMessage: exec.message,
-          executedAt: new Date(),
-        },
+        storeContext,
+        userText,
+        conversationHistory: conversationHistory ?? undefined,
       });
-      return c.json(
-        {
-          sessionId: session.id,
-          transcript: userText,
-          response: { type: "answer" as const, message: exec.message },
-        },
-        200,
-      );
+    } catch (err) {
+      console.error("[voice.handler] createVoiceStream error:", err);
+      return jsonError(c, 500, {
+        error: "Error al iniciar la respuesta.",
+        code: "INTERNAL_ERROR",
+      });
     }
 
-    await prisma.voiceAction.update({
-      where: { id: actionRow.id },
-      data: {
-        status: VoiceActionStatus.EXECUTED,
-        resultJson: JSON.stringify(exec.data ?? { message: exec.message }),
-        executedAt: new Date(),
+    const encoder = new TextEncoder();
+    const enqueue = (controller: ReadableStreamDefaultController<Uint8Array>, line: string) => {
+      controller.enqueue(encoder.encode(line + "\n"));
+    };
+
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          enqueue(controller, JSON.stringify({
+            type: "meta",
+            sessionId: session.id,
+            transcript: userText,
+          }));
+
+          for await (const chunk of streamResult.textStream) {
+            enqueue(controller, JSON.stringify({ type: "chunk", text: chunk }));
+          }
+
+          const steps = await streamResult.steps;
+          const toolInvocations = getToolInvocationsFromSteps(steps);
+          const fullText = (await streamResult.text)?.trim() ?? (toolInvocations.length > 0 ? "Listo." : "");
+          const now = new Date();
+
+          if (toolInvocations.length > 0) {
+            for (const inv of toolInvocations) {
+              const actionName = VoiceActionNameSchema.safeParse(inv.toolName);
+              const name = actionName.success ? actionName.data : "other";
+              await prisma.voiceAction.create({
+                data: {
+                  sessionId: session.id,
+                  storeId: store.id,
+                  type: mapActionNameToType(name),
+                  status: VoiceActionStatus.EXECUTED,
+                  intentName: inv.toolName,
+                  parametersJson:
+                    inv.input != null ? JSON.stringify(inv.input) : null,
+                  resultJson:
+                    inv.output != null ? JSON.stringify(inv.output) : null,
+                  executedAt: now,
+                },
+              });
+            }
+          } else {
+            await prisma.voiceAction.create({
+              data: {
+                sessionId: session.id,
+                storeId: store.id,
+                type: mapActionNameToType("other"),
+                status: VoiceActionStatus.EXECUTED,
+                intentName: "answer",
+                parametersJson: null,
+                resultJson: JSON.stringify({ message: fullText }),
+                executedAt: now,
+              },
+            });
+          }
+
+          enqueue(controller, JSON.stringify({ type: "done", message: fullText }));
+        } catch (err) {
+          console.error("[voice.handler] stream error:", err);
+          const message = err instanceof Error ? err.message : "Error al generar la respuesta.";
+          enqueue(controller, JSON.stringify({ type: "error", message }));
+        } finally {
+          controller.close();
+        }
       },
     });
 
-    return c.json(
-      {
-        sessionId: session.id,
-        transcript: userText,
-        response: { type: "answer" as const, message: exec.message },
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/x-ndjson",
+        "Cache-Control": "no-store",
       },
-      200,
-    );
+    });
   } catch (err: unknown) {
     console.error("[voice.handler] error:", err);
     return c.json(

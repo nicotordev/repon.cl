@@ -1,13 +1,20 @@
 "use client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-export async function fetcher<T>(path: string, token: string | null, options: RequestInit = {}): Promise<T> {
+export async function fetcher<T>(
+  path: string,
+  token: string | null,
+  options: RequestInit = {}
+): Promise<T> {
   const headers = new Headers(options.headers);
   if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+    headers.set("Authorization", `Bearer ${token}`);
   }
-  headers.set('Content-Type', 'application/json');
+  // Do not set Content-Type for FormData (browser sets multipart boundary)
+  if (!(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
 
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -15,8 +22,14 @@ export async function fetcher<T>(path: string, token: string | null, options: Re
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-    throw new Error(error.message || response.statusText);
+    const error = await response
+      .json()
+      .catch(() => ({ error: "An error occurred" }));
+    const message =
+      (error as { error?: string }).error ||
+      (error as { message?: string }).message ||
+      response.statusText;
+    throw new Error(message);
   }
 
   return response.json();

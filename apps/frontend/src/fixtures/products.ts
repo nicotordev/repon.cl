@@ -1,4 +1,4 @@
-import type { Product } from "@/src/store/inventory.store";
+import type { Product } from "@/src/lib/backend";
 
 export const mockProducts: Product[] = [
   {
