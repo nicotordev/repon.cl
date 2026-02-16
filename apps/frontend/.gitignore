@@ -1,14 +1,19 @@
 
-# Next.js build output
+# --- Next.js Ignored Files and Folders ---
+
+# Build output directories
 .next/
 out/
-.cache/
 dist/
+.cache/
 
-# Clerk configuration (can include secrets)
-/.clerk/
+# Static build output (if using "next export")
+export/
 
-# Environment variables
+# Ignore local/secret Clerk config
+/clerk/
+
+# Environment variables (keep example)
 .env
 .env.*
 !.env.example
@@ -21,26 +26,35 @@ pnpm-debug.log*
 lerna-debug.log*
 *.log
 
-# OS generated files
+# System files
 .DS_Store
 Thumbs.db
 
-# IDE directories
+# IDE/editor config folders
 .vscode/
 .idea/
 
-# Editor swap/backup files
+# Editor swap and temp files
 *.swp
 *.tmp
 
-# Dependency directories
+# Dependencies
 node_modules/
 
-# Coverage folder
+# Coverage output
 coverage/
 
-# Build output for public assets
+# Public asset build output (if used)
 public/build/
 
 # ESLint cache
 .eslintcache
+
+# Next.js custom server output (optional, e.g. "server/")
+server/
+
+# TypeScript build info (optional, if used)
+*.tsbuildinfo
+
+# Next.js cache (for app dir, should already be covered by .next)
+.next/cache/
