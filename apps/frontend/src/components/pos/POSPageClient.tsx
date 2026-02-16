@@ -1,13 +1,13 @@
 "use client";
 
-import { ProductQuickSearch } from "@/src/components/pos/ProductQuickSearch";
-import { CartDrawer } from "@/src/components/pos/CartDrawer";
-import { ReceiptSheet } from "@/src/components/pos/ReceiptSheet";
-import { useCartStore } from "@/src/store/cart.store";
-import { Button } from "@/src/components/ui/button";
-import { Input } from "@/src/components/ui/input";
-import { useUIStore } from "@/src/store/ui.store";
-import { formatMoney } from "@/src/lib/money";
+import { CartDrawer } from "@/components/pos/CartDrawer";
+import { ProductQuickSearch } from "@/components/pos/ProductQuickSearch";
+import { ReceiptSheet } from "@/components/pos/ReceiptSheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { formatMoney } from "@/lib/money";
+import { useCartStore } from "@/store/cart.store";
+import { useUIStore } from "@/store/ui.store";
 import { Minus, Plus, Trash2 } from "lucide-react";
 
 export function POSPageClient() {
@@ -37,7 +37,9 @@ export function POSPageClient() {
                 className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card p-3"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground">{i.name}</p>
+                  <p className="truncate font-medium text-foreground">
+                    {i.name}
+                  </p>
                   <p className="text-muted-foreground text-sm">
                     {formatMoney(i.unitPriceCents)} × {i.quantity}
                   </p>
@@ -47,9 +49,7 @@ export function POSPageClient() {
                     variant="outline"
                     size="icon"
                     className="size-8"
-                    onClick={() =>
-                      updateQuantity(i.productId, i.quantity - 1)
-                    }
+                    onClick={() => updateQuantity(i.productId, i.quantity - 1)}
                   >
                     <Minus className="size-3" />
                   </Button>
@@ -69,9 +69,7 @@ export function POSPageClient() {
                     variant="outline"
                     size="icon"
                     className="size-8"
-                    onClick={() =>
-                      updateQuantity(i.productId, i.quantity + 1)
-                    }
+                    onClick={() => updateQuantity(i.productId, i.quantity + 1)}
                   >
                     <Plus className="size-3" />
                   </Button>
@@ -93,10 +91,7 @@ export function POSPageClient() {
             <p className="text-right font-semibold text-foreground">
               Total: {formatMoney(totalCents)}
             </p>
-            <Button
-              className="w-full"
-              onClick={() => openSheet("payment")}
-            >
+            <Button className="w-full" onClick={() => openSheet("payment")}>
               Ir a pagar
             </Button>
           </div>

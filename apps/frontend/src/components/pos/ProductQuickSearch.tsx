@@ -1,13 +1,13 @@
 "use client";
 
+import { BarcodeScannerSheet } from "@/components/pos/BarcodeScannerSheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useInventory } from "@/hooks/use-inventory";
+import { formatMoney } from "@/lib/money";
+import { useCartStore } from "@/store/cart.store";
+import { ScanBarcode, Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { Input } from "@/src/components/ui/input";
-import { Search, ScanBarcode } from "lucide-react";
-import { useCartStore } from "@/src/store/cart.store";
-import { Button } from "@/src/components/ui/button";
-import { formatMoney } from "@/src/lib/money";
-import { useInventory } from "@/src/hooks/use-inventory";
-import { BarcodeScannerSheet } from "@/src/components/pos/BarcodeScannerSheet";
 import { toast } from "sonner";
 
 export function ProductQuickSearch() {
@@ -25,7 +25,7 @@ export function ProductQuickSearch() {
       (p) =>
         p.name.toLowerCase().includes(term) ||
         p.brand?.toLowerCase().includes(term) ||
-        p.barcodes?.some((b) => b.code.toLowerCase().includes(term))
+        p.barcodes?.some((b) => b.code.toLowerCase().includes(term)),
     );
   }, [products, q]);
 
@@ -34,8 +34,10 @@ export function ProductQuickSearch() {
       const normalized = code.trim();
       const product = products.find((p) =>
         p.barcodes?.some(
-          (b) => b.code === normalized || b.code.replace(/\s/g, "") === normalized.replace(/\s/g, "")
-        )
+          (b) =>
+            b.code === normalized ||
+            b.code.replace(/\s/g, "") === normalized.replace(/\s/g, ""),
+        ),
       );
       if (product) {
         addItem({
@@ -47,10 +49,12 @@ export function ProductQuickSearch() {
         toast.success(`${product.name} agregado al carrito`);
       } else {
         setQ(normalized);
-        toast.info("Código no encontrado. Busca o agrega el producto manualmente.");
+        toast.info(
+          "Código no encontrado. Busca o agrega el producto manualmente.",
+        );
       }
     },
-    [products, addItem]
+    [products, addItem],
   );
 
   return (

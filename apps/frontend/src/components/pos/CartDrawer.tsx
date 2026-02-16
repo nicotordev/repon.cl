@@ -1,19 +1,18 @@
 "use client";
 
-import { useCartStore } from "@/src/store/cart.store";
-import { useUIStore } from "@/src/store/ui.store";
+import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
-} from "@/src/components/ui/drawer";
-import { Button } from "@/src/components/ui/button";
-import { Input } from "@/src/components/ui/input";
-import { formatMoney } from "@/src/lib/money";
+} from "@/components/ui/drawer";
+import { formatMoney } from "@/lib/money";
+import { useCartStore } from "@/store/cart.store";
+import { useUIStore } from "@/store/ui.store";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { PaymentSheet } from "./PaymentSheet";
+import { Input } from "../ui/input";
 
 export function CartDrawer() {
   const open = useUIStore((s) => s.sheetsOpen.includes("cart"));
@@ -71,7 +70,7 @@ export function CartDrawer() {
                         onChange={(e) =>
                           updateQuantity(
                             i.productId,
-                            Math.max(1, Number(e.target.value) || 1)
+                            Math.max(1, Number(e.target.value) || 1),
                           )
                         }
                         className="h-8 w-12 text-center text-sm"

@@ -1,8 +1,8 @@
 "use client";
 
+import { loadQueue, type PendingAction } from "@/lib/offlineQueue";
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import { loadQueue, type PendingAction } from "@/src/lib/offlineQueue";
 
 type OfflineState = {
   isOnline: boolean;

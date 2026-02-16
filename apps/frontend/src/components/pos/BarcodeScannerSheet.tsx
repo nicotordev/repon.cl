@@ -1,14 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@/src/components/ui/sheet";
-import { Button } from "@/src/components/ui/button";
+} from "@/components/ui/sheet";
 import { Loader2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const SCAN_COOLDOWN_MS = 2000;
 
@@ -18,7 +18,9 @@ type BarcodeDetectorInstance = {
 
 declare global {
   interface Window {
-    BarcodeDetector?: new (options?: { formats?: string[] }) => BarcodeDetectorInstance;
+    BarcodeDetector?: new (options?: {
+      formats?: string[];
+    }) => BarcodeDetectorInstance;
   }
 }
 
@@ -151,7 +153,9 @@ export function BarcodeScannerSheet({
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "No se pudo acceder a la cámara",
+            err instanceof Error
+              ? err.message
+              : "No se pudo acceder a la cámara",
           );
         }
       }

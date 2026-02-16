@@ -1,13 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import type {
-  VoiceApiErrorBody,
-  VoiceRecordingState,
-  VoiceResult,
-  VoiceState,
-} from "@/src/lib/voice-types";
+import { VoiceApiErrorBody, VoiceRecordingState, VoiceState } from "@/lib/voice-types";
 import { useAuth } from "@clerk/nextjs";
+import { useCallback, useRef, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const VOICE_ENDPOINT = `${API_BASE}/api/v1/chat/voice`;
@@ -85,7 +80,13 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}) {
 
       recorder.start(100);
       recorderRef.current = recorder;
-      transitionTo("RECORDING", { error: null, result: null, streamingTranscript: null, streamingResponse: null, streamingThought: null });
+      transitionTo("RECORDING", {
+        error: null,
+        result: null,
+        streamingTranscript: null,
+        streamingResponse: null,
+        streamingThought: null,
+      });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "No se pudo acceder al micrófono";
@@ -111,12 +112,22 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}) {
         chunksRef.current = [];
 
         if (!blob || blob.size === 0) {
-          transitionTo("IDLE", { error: null, result: null, streamingTranscript: null, streamingResponse: null, streamingThought: null });
+          transitionTo("IDLE", {
+            error: null,
+            result: null,
+            streamingTranscript: null,
+            streamingResponse: null,
+            streamingThought: null,
+          });
           resolve();
           return;
         }
 
-        transitionTo("PROCESSING", { streamingTranscript: null, streamingResponse: null, streamingThought: null });
+        transitionTo("PROCESSING", {
+          streamingTranscript: null,
+          streamingResponse: null,
+          streamingThought: null,
+        });
 
         try {
           const form = new FormData();
@@ -137,7 +148,9 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}) {
           });
 
           if (!res.ok) {
-            const data = (await res.json().catch(() => ({}))) as VoiceApiErrorBody;
+            const data = (await res
+              .json()
+              .catch(() => ({}))) as VoiceApiErrorBody;
             const errorMessage =
               typeof data.error === "string" && data.error
                 ? data.error
@@ -182,18 +195,35 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}) {
                   if (obj.type === "meta") {
                     if (typeof obj.sessionId === "string" && obj.sessionId)
                       sessionIdRef.current = obj.sessionId;
-                    transcript = typeof obj.transcript === "string" ? obj.transcript : "";
-                    setVoiceState((prev) => setState(prev, { streamingTranscript: transcript }));
-                  } else if (obj.type === "chunk" && typeof obj.text === "string") {
+                    transcript =
+                      typeof obj.transcript === "string" ? obj.transcript : "";
+                    setVoiceState((prev) =>
+                      setState(prev, { streamingTranscript: transcript }),
+                    );
+                  } else if (
+                    obj.type === "chunk" &&
+                    typeof obj.text === "string"
+                  ) {
                     fullMessage += obj.text;
                     setVoiceState((prev) =>
-                      setState(prev, { streamingResponse: fullMessage, streamingThought: null }),
+                      setState(prev, {
+                        streamingResponse: fullMessage,
+                        streamingThought: null,
+                      }),
                     );
-                  } else if (obj.type === "thought" && typeof obj.text === "string") {
-                    setVoiceState((prev) => setState(prev, { streamingThought: obj.text ?? null }));
+                  } else if (
+                    obj.type === "thought" &&
+                    typeof obj.text === "string"
+                  ) {
+                    setVoiceState((prev) =>
+                      setState(prev, { streamingThought: obj.text ?? null }),
+                    );
                   } else if (obj.type === "done") {
                     streamFinished = true;
-                    const message = typeof obj.message === "string" ? obj.message : fullMessage;
+                    const message =
+                      typeof obj.message === "string"
+                        ? obj.message
+                        : fullMessage;
                     transitionTo("RESPONDING", {
                       result: { transcript, response: message },
                       error: null,
@@ -203,8 +233,16 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}) {
                     });
                   } else if (obj.type === "error") {
                     streamFinished = true;
-                    const msg = typeof obj.message === "string" ? obj.message : "Error en el servidor";
-                    transitionTo("ERROR", { error: msg, streamingTranscript: null, streamingResponse: null, streamingThought: null });
+                    const msg =
+                      typeof obj.message === "string"
+                        ? obj.message
+                        : "Error en el servidor";
+                    transitionTo("ERROR", {
+                      error: msg,
+                      streamingTranscript: null,
+                      streamingResponse: null,
+                      streamingThought: null,
+                    });
                   }
                 } catch {
                   // ignore malformed lines
@@ -240,7 +278,8 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}) {
                   : "";
             transitionTo("RESPONDING", {
               result: {
-                transcript: typeof data.transcript === "string" ? data.transcript : "",
+                transcript:
+                  typeof data.transcript === "string" ? data.transcript : "",
                 response: message,
               },
               error: null,
@@ -251,7 +290,12 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}) {
           }
         } catch (err) {
           const message = err instanceof Error ? err.message : "Error de red";
-          transitionTo("ERROR", { error: message, streamingTranscript: null, streamingResponse: null, streamingThought: null });
+          transitionTo("ERROR", {
+            error: message,
+            streamingTranscript: null,
+            streamingResponse: null,
+            streamingThought: null,
+          });
         }
         resolve();
       };

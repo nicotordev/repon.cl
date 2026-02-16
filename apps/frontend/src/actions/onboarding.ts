@@ -3,12 +3,12 @@
 import backend, {
   BackendError,
   type OnboardingProfileInput,
-} from "@/src/lib/backend";
+} from "@/lib/backend";
 
 export type OnboardingResult = { ok: true } | { ok: false; error: string };
 
 export async function submitOnboarding(
-  data: OnboardingProfileInput
+  data: OnboardingProfileInput,
 ): Promise<OnboardingResult> {
   try {
     await backend.updateUserProfile({
@@ -18,7 +18,9 @@ export async function submitOnboarding(
     return { ok: true };
   } catch (e) {
     const message =
-      e instanceof BackendError ? e.message : "No se pudo guardar. Intenta de nuevo.";
+      e instanceof BackendError
+        ? e.message
+        : "No se pudo guardar. Intenta de nuevo.";
     return { ok: false, error: message };
   }
 }

@@ -1,16 +1,16 @@
 "use client";
 
-import { useOfflineStore } from "@/src/store/offline.store";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@/src/components/ui/sheet";
-import { Button } from "@/src/components/ui/button";
-import { useUIStore } from "@/src/store/ui.store";
-import { removeFromQueue } from "@/src/lib/offlineQueue";
-import { formatRelative } from "@/src/lib/dates";
+} from "@/components/ui/sheet";
+import { formatRelative } from "@/lib/dates";
+import { removeFromQueue } from "@/lib/offlineQueue";
+import { useOfflineStore } from "@/store/offline.store";
+import { useUIStore } from "@/store/ui.store";
 
 export function PendingQueueSheet() {
   const open = useUIStore((s) => s.sheetsOpen.includes("pending"));
@@ -46,7 +46,9 @@ export function PendingQueueSheet() {
                 className="flex items-center justify-between rounded-lg border p-3"
               >
                 <div>
-                  <p className="font-medium capitalize">{a.type.replace("_", " ")}</p>
+                  <p className="font-medium capitalize">
+                    {a.type.replace("_", " ")}
+                  </p>
                   <p className="text-muted-foreground text-xs">
                     {formatRelative(a.createdAt)}
                   </p>

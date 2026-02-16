@@ -1,17 +1,17 @@
 "use client";
 
-import { Bell, Loader2 } from "lucide-react";
-import Logo from "../common/logo";
-import { Button } from "../ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/src/components/ui/popover";
+} from "@/components/ui/popover";
+import { useAlerts, useMarkAlertRead } from "@/hooks/use-alerts";
+import type { StoreAlert } from "@/lib/alerts";
+import { cn } from "@/lib/utils";
+import { Bell, Loader2 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useAlerts, useMarkAlertRead } from "@/src/hooks/use-alerts";
-import type { StoreAlert } from "@/src/lib/alerts";
-import { cn } from "@/src/lib/utils";
+import Logo from "../common/logo";
+import { Button } from "../ui/button";
 
 const titles: Record<string, string> = {
   "/pos": "Caja",

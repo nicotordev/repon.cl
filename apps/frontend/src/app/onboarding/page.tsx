@@ -1,48 +1,44 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/src/components/ui/button";
-import { Input } from "@/src/components/ui/input";
-import { Progress } from "@/src/components/ui/progress";
-import { Switch } from "@/src/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/src/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldGroup,
   FieldLabel,
-} from "@/src/components/ui/field";
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/src/components/ui/avatar";
-import { appName } from "@/src/lib/env";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { appName } from "@/lib/env";
 import {
+  Bell,
+  Calendar,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  User,
-  Store,
-  Phone,
-  Calendar,
   Globe,
-  Palette,
-  Bell,
-  Image,
-  CheckCircle2,
   HandHelping,
-  Upload,
+  Image,
   Loader2,
+  Palette,
+  Phone,
+  Store,
+  Upload,
+  User,
 } from "lucide-react";
-import { Separator } from "@/src/components/ui/separator";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 
 const STEPS = [
   "welcome",
@@ -118,16 +114,6 @@ const THEMES: { value: string; label: string }[] = [
   { value: "light", label: "Claro" },
   { value: "dark", label: "Oscuro" },
   { value: "system", label: "Sistema" },
-];
-
-const TIMEZONES: { value: string; label: string }[] = [
-  { value: "America/Santiago", label: "Chile (Santiago)" },
-  {
-    value: "America/Argentina/Buenos_Aires",
-    label: "Argentina (Buenos Aires)",
-  },
-  { value: "America/Lima", label: "Perú (Lima)" },
-  { value: "America/Mexico_City", label: "México (Ciudad de México)" },
 ];
 
 const CURRENCIES: { value: string; label: string }[] = [

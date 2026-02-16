@@ -1,11 +1,11 @@
 "use client";
 
-import { CopilotPanel } from "@/src/components/copilot/CopilotPanel";
-import { OfflineBanner } from "@/src/components/offline/OfflineBanner";
-import { PendingQueueSheet } from "@/src/components/offline/PendingQueueSheet";
-import { ConversationProvider } from "@/src/contexts/ConversationContext";
-import { featureCopilot, featureOffline } from "@/src/lib/env";
-import { useUIStore } from "@/src/store/ui.store";
+import { CopilotPanel } from "@/components/copilot/CopilotPanel";
+import { OfflineBanner } from "@/components/offline/OfflineBanner";
+import { PendingQueueSheet } from "@/components/offline/PendingQueueSheet";
+import { ConversationProvider } from "@/contexts/ConversationContext";
+import { featureCopilot, featureOffline } from "@/lib/env";
+import { useUIStore } from "@/store/ui.store";
 import { usePathname } from "next/navigation";
 import { MobileNav } from "./MobileNav";
 import { Topbar } from "./Topbar";

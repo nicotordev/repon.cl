@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
+import { OneSignalProvider } from "@/components/providers/OneSignalProvider";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Geist, Geist_Mono } from "next/font/google";
-import { QueryProvider } from "@/src/components/providers/QueryProvider";
-import { OneSignalProvider } from "@/src/components/providers/OneSignalProvider";
-import "./globals.css";
+import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +28,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <ClerkProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <OneSignalProvider>

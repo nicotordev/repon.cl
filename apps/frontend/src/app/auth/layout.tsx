@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { appName } from "@/src/lib/env";
 
 export default function AuthLayout({
   children,
@@ -25,8 +24,7 @@ export default function AuthLayout({
           quality={85}
         />
         {/* Overlay opcional para suavizar la imagen si el texto encima fuera necesario */}
-        <div className="absolute inset-0 bg-black/30 z-10 flex items-center justify-center">
-        </div>
+        <div className="absolute inset-0 bg-black/30 z-10 flex items-center justify-center"></div>
       </section>
     </main>
   );

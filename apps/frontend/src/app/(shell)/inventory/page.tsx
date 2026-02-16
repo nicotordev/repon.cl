@@ -1,6 +1,6 @@
+import { InventoryPageClient } from "@/components/inventory/InventoryPageClient";
+import backend, { BackendError } from "@/lib/backend";
 import { redirect } from "next/navigation";
-import { InventoryPageClient } from "@/src/components/inventory/InventoryPageClient";
-import backend, { BackendError } from "@/src/lib/backend";
 
 export default async function InventoryPage() {
   let products: Awaited<ReturnType<typeof backend.inventory.getProducts>> = [];

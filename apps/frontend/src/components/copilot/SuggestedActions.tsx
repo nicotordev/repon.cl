@@ -1,8 +1,8 @@
 "use client";
 
-import type { SuggestedAction } from "@/src/store/copilot.store";
-import { Button } from "@/src/components/ui/button";
-import { useUIStore } from "@/src/store/ui.store";
+import { Button } from "@/components/ui/button";
+import type { SuggestedAction } from "@/store/copilot.store";
+import { useUIStore } from "@/store/ui.store";
 
 export function SuggestedActions({
   suggestions,

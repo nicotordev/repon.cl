@@ -1,7 +1,7 @@
 "use client";
 
-import { featureCopilot } from "@/src/lib/env";
-import { cn } from "@/src/lib/utils";
+import { featureCopilot } from "@/lib/env";
+import { cn } from "@/lib/utils";
 import { BarChart3, LayoutGrid, Mic, Package, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

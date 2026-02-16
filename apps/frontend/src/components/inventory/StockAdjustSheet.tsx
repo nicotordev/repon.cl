@@ -1,21 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useInventoryStore } from "@/src/store/inventory.store";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@/src/components/ui/sheet";
-import { Button } from "@/src/components/ui/button";
-import { Input } from "@/src/components/ui/input";
-import { Label } from "@/src/components/ui/label";
-import { useUIStore } from "@/src/store/ui.store";
-import { useAdjustStock } from "@/src/hooks/use-inventory";
+} from "@/components/ui/sheet";
+import { useAdjustStock } from "@/hooks/use-inventory";
+import type { Product } from "@/lib/backend";
+import { useInventoryStore } from "@/store/inventory.store";
+import { useUIStore } from "@/store/ui.store";
 import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Product } from "@/src/lib/backend";
 
 interface Props {
   products: Product[];
@@ -29,7 +29,7 @@ export function StockAdjustSheet({ products }: Props) {
 
   const product = products.find((p) => p.id === selectedId);
   const [value, setValue] = useState(0);
-  
+
   const adjustStock = useAdjustStock();
 
   useEffect(() => {
@@ -49,28 +49,31 @@ export function StockAdjustSheet({ products }: Props) {
     if (selectedId != null && product) {
       const currentStock = product.stock ?? 0;
       const quantityDelta = value - currentStock;
-      
+
       if (quantityDelta === 0) {
         handleOpenChange(false);
         return;
       }
 
-      adjustStock.mutate({
-        productId: selectedId,
-        data: {
-          quantityDelta,
-          reason: quantityDelta > 0 ? "COUNT_CORRECTION" : "DAMAGE", // Simplified for now
-          note: "Ajuste manual desde la web",
-        }
-      }, {
-        onSuccess: () => {
-          toast.success("Stock actualizado correctamente");
-          handleOpenChange(false);
+      adjustStock.mutate(
+        {
+          productId: selectedId,
+          data: {
+            quantityDelta,
+            reason: quantityDelta > 0 ? "COUNT_CORRECTION" : "DAMAGE", // Simplified for now
+            note: "Ajuste manual desde la web",
+          },
         },
-        onError: (err) => {
-          toast.error(`Error al actualizar stock: ${err.message}`);
-        }
-      });
+        {
+          onSuccess: () => {
+            toast.success("Stock actualizado correctamente");
+            handleOpenChange(false);
+          },
+          onError: (err) => {
+            toast.error(`Error al actualizar stock: ${err.message}`);
+          },
+        },
+      );
     }
   };
 
@@ -92,11 +95,22 @@ export function StockAdjustSheet({ products }: Props) {
             />
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)} disabled={adjustStock.isPending}>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => handleOpenChange(false)}
+              disabled={adjustStock.isPending}
+            >
               Cancelar
             </Button>
-            <Button className="flex-1" onClick={handleSave} disabled={adjustStock.isPending}>
-              {adjustStock.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+            <Button
+              className="flex-1"
+              onClick={handleSave}
+              disabled={adjustStock.isPending}
+            >
+              {adjustStock.isPending && (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              )}
               Guardar
             </Button>
           </div>

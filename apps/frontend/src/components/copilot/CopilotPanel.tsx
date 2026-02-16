@@ -5,12 +5,12 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@/src/components/ui/sheet";
-import { useUIStore } from "@/src/store/ui.store";
-import { useCopilotStore } from "@/src/store/copilot.store";
-import { SuggestedActions } from "./SuggestedActions";
+} from "@/components/ui/sheet";
+import { VoiceButton } from "@/components/voice/VoiceButton";
+import { useCopilotStore } from "@/store/copilot.store";
+import { useUIStore } from "@/store/ui.store";
 import { ConversationList } from "./ConversationList";
-import { VoiceButton } from "@/src/components/voice/VoiceButton";
+import { SuggestedActions } from "./SuggestedActions";
 
 export function CopilotPanel() {
   const open = useUIStore((s) => s.sheetsOpen.includes("copilot"));

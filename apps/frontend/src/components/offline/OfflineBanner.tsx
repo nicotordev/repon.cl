@@ -1,8 +1,8 @@
 "use client";
 
+import { featureOffline } from "@/lib/env";
+import { useOfflineStore } from "@/store/offline.store";
 import { useEffect, useState } from "react";
-import { useOfflineStore } from "@/src/store/offline.store";
-import { featureOffline } from "@/src/lib/env";
 
 export function OfflineBanner() {
   const isOnline = useOfflineStore((s) => s.isOnline);

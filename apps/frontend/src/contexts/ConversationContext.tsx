@@ -1,5 +1,6 @@
 "use client";
 
+import type { ConversationMessage } from "@/lib/conversation-types";
 import {
   createContext,
   useCallback,
@@ -8,7 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { ConversationMessage } from "@/src/lib/conversation-types";
 
 function generateId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;

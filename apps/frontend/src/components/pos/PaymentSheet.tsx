@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { useCartStore } from "@/src/store/cart.store";
-import { useUIStore } from "@/src/store/ui.store";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@/src/components/ui/sheet";
-import { Button } from "@/src/components/ui/button";
-import { Input } from "@/src/components/ui/input";
-import { Label } from "@/src/components/ui/label";
-import { formatMoney } from "@/src/lib/money";
+} from "@/components/ui/sheet";
+import { formatMoney } from "@/lib/money";
+import { useCartStore } from "@/store/cart.store";
+import { useUIStore } from "@/store/ui.store";
+import { useState } from "react";
 
 export function PaymentSheet() {
   const open = useUIStore((s) => s.sheetsOpen.includes("payment"));

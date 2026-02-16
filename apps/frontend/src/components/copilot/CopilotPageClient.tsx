@@ -1,9 +1,9 @@
 "use client";
 
-import { ConversationList } from "@/src/components/copilot/ConversationList";
-import { SuggestedActions } from "@/src/components/copilot/SuggestedActions";
-import { VoiceButton } from "@/src/components/voice/VoiceButton";
-import { useCopilotStore } from "@/src/store/copilot.store";
+import { ConversationList } from "@/components/copilot/ConversationList";
+import { SuggestedActions } from "@/components/copilot/SuggestedActions";
+import { VoiceButton } from "@/components/voice/VoiceButton";
+import { useCopilotStore } from "@/store/copilot.store";
 
 export function CopilotPageClient() {
   const suggestions = useCopilotStore((s) => s.suggestions);

@@ -1,8 +1,13 @@
 "use client";
 
-import { Label } from "@/src/components/ui/label";
-import { Switch } from "@/src/components/ui/switch";
-import { appName, featureOffline, featureCopilot, featureVoice } from "@/src/lib/env";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  appName,
+  featureCopilot,
+  featureOffline,
+  featureVoice,
+} from "@/lib/env";
 
 export function SettingsPageClient() {
   return (
@@ -28,7 +33,9 @@ export function SettingsPageClient() {
       </section>
       <section>
         <h2 className="mb-2 font-semibold">Moneda e impuestos</h2>
-        <p className="text-muted-foreground text-sm">CLP — IVA 19% (configurable luego)</p>
+        <p className="text-muted-foreground text-sm">
+          CLP — IVA 19% (configurable luego)
+        </p>
       </section>
     </div>
   );

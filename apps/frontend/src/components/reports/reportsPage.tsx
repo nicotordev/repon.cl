@@ -1,16 +1,16 @@
 "use client";
 
+import { StatCard } from "@/components/common/StatCard";
+import { formatMoney } from "@/lib/money";
 import { useEffect, useState } from "react";
-import { StatCard } from "@/src/components/common/StatCard";
-import { formatMoney } from "@/src/lib/money";
-// import { fetchSalesToday, fetchTopProducts } from "@/src/lib/mockApi";
+// import { fetchSalesToday, fetchTopProducts } from "@/lib/mockApi";
 import {
-  BarChart,
   Bar,
-  XAxis,
-  YAxis,
+  BarChart,
   ResponsiveContainer,
   Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
 
 export default function ReportsPage() {

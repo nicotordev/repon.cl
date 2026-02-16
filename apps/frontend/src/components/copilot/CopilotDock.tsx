@@ -1,10 +1,10 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { featureCopilot, featureVoice } from "@/lib/env";
+import { useCopilotStore } from "@/store/copilot.store";
+import { useUIStore } from "@/store/ui.store";
 import { Mic } from "lucide-react";
-import { Button } from "@/src/components/ui/button";
-import { useCopilotStore } from "@/src/store/copilot.store";
-import { useUIStore } from "@/src/store/ui.store";
-import { featureCopilot, featureVoice } from "@/src/lib/env";
 
 export function CopilotDock() {
   const setMode = useCopilotStore((s) => s.setMode);

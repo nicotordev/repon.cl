@@ -64,6 +64,12 @@ export type UnitOfMeasure =
   | "MILLILITER"
   | "LITER";
 
+export type StockLotSource =
+  | "PURCHASE"
+  | "MANUAL"
+  | "ADJUSTMENT"
+  | "RETURN";
+
 export type InventoryAdjustmentReason =
   | "COUNT_CORRECTION"
   | "DAMAGE"
@@ -77,15 +83,16 @@ export interface StockLot {
   id: string;
   storeId: string;
   productId: string;
-  source: string;
+  source: StockLotSource;
+  purchaseId?: string | null;
   quantityIn: number;
   quantityOut: number;
-  unitCostNet?: number;
-  unitCostGross?: number;
-  expiresAt?: string;
+  unitCostNet?: number | null;
+  unitCostGross?: number | null;
+  expiresAt?: string | null;
   createdAt: string;
   updatedAt: string;
-  product?: { name: string; brand?: string };
+  product?: { name: string; brand?: string | null };
 }
 
 export interface InventoryAdjustment {
@@ -93,28 +100,29 @@ export interface InventoryAdjustment {
   storeId: string;
   productId: string;
   reason: InventoryAdjustmentReason;
-  note?: string;
+  note?: string | null;
+  lotId?: string | null;
   quantityDelta: number;
   occurredAt: string;
   createdAt: string;
-  product?: { name: string; brand?: string };
+  product?: { name: string; brand?: string | null };
 }
 
+/** Product: global catalog + store-specific fields (API merges Product + StoreProduct). */
 export interface Product {
   id: string;
-  storeId: string;
   name: string;
-  brand?: string;
-  category?: string;
+  brand?: string | null;
+  category?: string | null;
   uom: UnitOfMeasure;
-  salePriceGross?: number;
-  vatRateBps: number;
-  isVatExempt: boolean;
-  isPerishable: boolean;
-  defaultShelfLifeDays?: number;
+  salePriceGross?: number | null;
+  vatRateBps?: number;
+  isVatExempt?: boolean;
+  isPerishable?: boolean;
+  defaultShelfLifeDays?: number | null;
   imageUrl?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   stock?: number;
   barcodes?: { code: string }[];
   stockLots?: StockLot[];
@@ -149,6 +157,24 @@ export interface AdjustStockInput {
   quantityDelta: number;
   reason: InventoryAdjustmentReason;
   note?: string;
+}
+
+/** Catalog search result (global product not yet in store). */
+export interface CatalogProduct {
+  id: string;
+  name: string;
+  brand: string | null;
+  category: string | null;
+  uom: string;
+}
+
+export interface AddProductToStoreInput {
+  productId: string;
+  salePriceGross?: number;
+  isPerishable?: boolean;
+  defaultShelfLifeDays?: number;
+  initialStock?: number;
+  initialUnitCostGross?: number;
 }
 
 async function fetcher<T>(path: string, options: RequestInit = {}): Promise<T> {

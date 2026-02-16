@@ -1,4 +1,4 @@
-import { CopilotPageClient } from "@/src/components/copilot/CopilotPageClient";
+import { CopilotPageClient } from "@/components/copilot/CopilotPageClient";
 
 export default function CopilotPage() {
   return <CopilotPageClient />;

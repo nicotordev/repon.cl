@@ -1,5 +1,5 @@
+import { appName } from "@/lib/env";
 import Image from "next/image";
-import { appName } from "@/src/lib/env";
 
 export default function Logo() {
   return (

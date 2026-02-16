@@ -35,6 +35,24 @@ export interface AdjustStockInput {
   note?: string;
 }
 
+/** Lightweight catalog item for search (global Product, not yet in store). */
+export interface CatalogProductRow {
+  id: string;
+  name: string;
+  brand: string | null;
+  category: string | null;
+  uom: string;
+}
+
+export interface AddProductToStoreInput {
+  productId: string;
+  salePriceGross?: number;
+  isPerishable?: boolean;
+  defaultShelfLifeDays?: number;
+  initialStock?: number;
+  initialUnitCostGross?: number;
+}
+
 function mapStoreProductToRow(
   sp: {
     product: {
@@ -69,6 +87,43 @@ function mapStoreProductToRow(
 }
 
 const inventoryService = {
+  /**
+   * Search global product catalog for products not yet in this store.
+   * Returns lightweight rows for autocomplete / add-to-store flow.
+   */
+  async searchCatalog(storeId: string, query: string): Promise<CatalogProductRow[]> {
+    const q = query.trim();
+    if (!q || q.length < 2) return [];
+
+    const alreadyInStore = await prisma.storeProduct.findMany({
+      where: { storeId },
+      select: { productId: true },
+    });
+    const excludeIds = alreadyInStore.map((s) => s.productId);
+
+    const rows = await prisma.product.findMany({
+      where: {
+        id: excludeIds.length > 0 ? { notIn: excludeIds } : undefined,
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { brand: { contains: q, mode: "insensitive" } },
+          { category: { contains: q, mode: "insensitive" } },
+          { barcodes: { some: { code: { contains: q } } } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        brand: true,
+        category: true,
+        uom: true,
+      },
+      orderBy: { name: "asc" },
+      take: 25,
+    });
+    return rows;
+  },
+
   async getProducts(storeId: string) {
     const rows = await prisma.storeProduct.findMany({
       where: { storeId },
@@ -182,8 +237,8 @@ const inventoryService = {
   },
 
   async createProduct(storeId: string, data: CreateProductInput) {
-    return await prisma.$transaction(async (tx) => {
-      const product = await tx.product.create({
+    const product = await prisma.$transaction(async (tx) => {
+      const p = await tx.product.create({
         data: {
           name: data.name,
           brand: data.brand,
@@ -198,7 +253,7 @@ const inventoryService = {
       await tx.storeProduct.create({
         data: {
           storeId,
-          productId: product.id,
+          productId: p.id,
           salePriceGross: data.salePriceGross,
           isPerishable: data.isPerishable ?? false,
           defaultShelfLifeDays: data.defaultShelfLifeDays,
@@ -209,7 +264,7 @@ const inventoryService = {
         await tx.stockLot.create({
           data: {
             storeId,
-            productId: product.id,
+            productId: p.id,
             quantityIn: data.initialStock,
             unitCostGross: data.initialUnitCostGross,
             source: StockLotSource.MANUAL,
@@ -217,8 +272,59 @@ const inventoryService = {
         });
       }
 
-      return product;
+      return p;
     });
+
+    const merged = await this.getProduct(storeId, product.id);
+    if (!merged) throw new Error("Product not found after create");
+    return merged;
+  },
+
+  /**
+   * Add an existing global product to the store (create StoreProduct + optional initial stock).
+   */
+  async addProductToStore(
+    storeId: string,
+    data: AddProductToStoreInput,
+  ) {
+    const { productId, ...rest } = data;
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
+    if (!product) throw new Error("Product not found");
+
+    const existing = await prisma.storeProduct.findFirst({
+      where: { storeId, productId },
+    });
+    if (existing) throw new Error("El producto ya está en tu tienda");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.storeProduct.create({
+        data: {
+          storeId,
+          productId,
+          salePriceGross: rest.salePriceGross,
+          isPerishable: rest.isPerishable ?? false,
+          defaultShelfLifeDays: rest.defaultShelfLifeDays,
+        },
+      });
+      if (rest.initialStock && rest.initialStock > 0) {
+        await tx.stockLot.create({
+          data: {
+            storeId,
+            productId,
+            quantityIn: rest.initialStock,
+            unitCostGross: rest.initialUnitCostGross,
+            source: StockLotSource.MANUAL,
+          },
+        });
+      }
+    });
+
+    const merged = await this.getProduct(storeId, productId);
+    if (!merged) throw new Error("Product not found after add");
+    return merged;
   },
 
   async updateProduct(storeId: string, productId: string, data: UpdateProductInput) {
@@ -335,7 +441,11 @@ const inventoryService = {
     });
   },
 
-  async deleteProduct(storeId: string, productId: string) {
+  /**
+   * Removes the product from the store (deletes StoreProduct and store-specific data).
+   * The global Product is never deleted and remains in the catalog.
+   */
+  async removeProductFromStore(storeId: string, productId: string) {
     const sp = await prisma.storeProduct.findFirst({
       where: { storeId, productId },
       select: { productId: true },
@@ -359,7 +469,7 @@ const inventoryService = {
     return productId;
   },
 
-  async deleteManyProducts(storeId: string, productIds: string[]) {
+  async removeManyProductsFromStore(storeId: string, productIds: string[]) {
     if (productIds.length === 0) return { count: 0 };
     const uniqueIds = [...new Set(productIds)];
     let count = 0;
@@ -375,7 +485,9 @@ const inventoryService = {
         await tx.inventoryAdjustment.deleteMany({ where: { productId, storeId } });
         await tx.stockLot.deleteMany({ where: { productId, storeId } });
         await tx.productAlert.deleteMany({ where: { storeId, productId } });
-        const sp = await tx.storeProduct.deleteMany({ where: { storeId, productId } });
+        const sp = await tx.storeProduct.deleteMany({
+          where: { storeId, productId },
+        });
         count += sp.count;
       }
     });

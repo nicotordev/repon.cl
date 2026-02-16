@@ -1,13 +1,13 @@
 "use client";
 
-import { useUIStore } from "@/src/store/ui.store";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@/src/components/ui/sheet";
-import { Button } from "@/src/components/ui/button";
+} from "@/components/ui/sheet";
+import { useUIStore } from "@/store/ui.store";
 
 export function ReceiptSheet() {
   const open = useUIStore((s) => s.sheetsOpen.includes("receipt"));

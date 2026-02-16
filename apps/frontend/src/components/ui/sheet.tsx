@@ -4,7 +4,7 @@ import { XIcon } from "lucide-react";
 import { Dialog as SheetPrimitive } from "radix-ui";
 import * as React from "react";
 
-import { cn } from "@/src/lib/utils";
+import { cn } from "@/lib/utils";
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -59,8 +59,8 @@ function SheetContent({
     side === "right" || side === "left"
       ? "px-6 py-8 sm:py-12 sm:px-8"
       : side === "top" || side === "bottom"
-      ? "px-4 py-6 sm:py-8 sm:px-6"
-      : "";
+        ? "px-4 py-6 sm:py-8 sm:px-6"
+        : "";
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -77,7 +77,7 @@ function SheetContent({
           side === "bottom" &&
             "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto border-t",
           sidePadding,
-          className
+          className,
         )}
         {...props}
       >

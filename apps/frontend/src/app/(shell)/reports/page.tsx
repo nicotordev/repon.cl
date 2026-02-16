@@ -1,4 +1,4 @@
-import ReportsPage from "@/src/components/reports/reportsPage";
+import ReportsPage from "@/components/reports/reportsPage";
 
 export default function ReportsPageRoot() {
   return <ReportsPage />;

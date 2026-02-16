@@ -9,6 +9,8 @@ import type {
   InventoryAdjustment,
   CreateProductInput,
   UpdateProductInput,
+  CatalogProduct,
+  AddProductToStoreInput,
 } from "../lib/backend";
 
 export function useInventory(q?: string, initialData?: Product[]) {
@@ -34,6 +36,42 @@ export function useAdjustStock() {
       const token = await getToken();
       return fetcher<InventoryAdjustment>(`/api/v1/inventory/${productId}/adjust`, token, {
         method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+}
+
+export function useSearchCatalog(query: string) {
+  const { getToken } = useAuth();
+  const q = query.trim();
+  return useQuery({
+    queryKey: ["inventory", "catalog", q],
+    queryFn: async () => {
+      const token = await getToken();
+      if (!q || q.length < 2) return [] as CatalogProduct[];
+      return fetcher<CatalogProduct[]>(
+        `/api/v1/inventory/catalog?q=${encodeURIComponent(q)}`,
+        token,
+      );
+    },
+    enabled: q.length >= 2,
+    staleTime: 30_000,
+  });
+}
+
+export function useAddProductToStore() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: AddProductToStoreInput) => {
+      const token = await getToken();
+      return fetcher<Product>("/api/v1/inventory/catalog/add", token, {
+        method: "POST",
         body: JSON.stringify(data),
       });
     },

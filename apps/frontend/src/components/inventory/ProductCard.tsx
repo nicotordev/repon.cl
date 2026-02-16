@@ -1,17 +1,5 @@
 "use client";
 
-import * as React from "react";
-import type { Product } from "@/src/lib/backend";
-import { Card, CardContent } from "@/src/components/ui/card";
-import { Badge } from "@/src/components/ui/badge";
-import { Button } from "@/src/components/ui/button";
-import { formatMoney } from "@/src/lib/money";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/src/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,22 +9,34 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/src/components/ui/alert-dialog";
-import { useDeleteProduct } from "@/src/hooks/use-inventory";
-import { useInventoryStore } from "@/src/store/inventory.store";
-import { useUIStore } from "@/src/store/ui.store";
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useDeleteProduct } from "@/hooks/use-inventory";
+import type { Product } from "@/lib/backend";
+import { formatMoney } from "@/lib/money";
+import { cn } from "@/lib/utils"; // shadcn
+import { useInventoryStore } from "@/store/inventory.store";
+import { useUIStore } from "@/store/ui.store";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import Image from "next/image";
+import * as React from "react";
 import { PiPackage } from "react-icons/pi";
 import { toast } from "sonner";
-import Image from "next/image";
-import { cn } from "@/src/lib/utils"; // shadcn
 
 // Skeleton Loader for mutation states
 function ProductCardSkeleton() {
   return (
     <Card
       className={cn(
-        "group relative overflow-hidden rounded-3xl border-border/60 bg-card py-0 opacity-70 pointer-events-none"
+        "group relative overflow-hidden rounded-3xl border-border/60 bg-card py-0 opacity-70 pointer-events-none",
       )}
     >
       <div className="relative h-36 w-full overflow-hidden">
@@ -79,7 +79,7 @@ export function ProductCard({
   const setSelectedId = useInventoryStore((s) => s.setSelectedId);
   const setEditProductId = useInventoryStore((s) => s.setEditProductId);
   const openSheet = useUIStore((s) => s.openSheet);
-  const deleteProduct = useDeleteProduct();
+  const removeFromStore = useDeleteProduct();
 
   const [showDeleteAlert, setShowDeleteAlert] = React.useState(false);
 
@@ -99,14 +99,14 @@ export function ProductCard({
     openSheet("productForm");
   };
 
-  const handleConfirmDelete = () => {
-    deleteProduct.mutate(product.id, {
+  const handleConfirmRemove = () => {
+    removeFromStore.mutate(product.id, {
       onSuccess: () => {
-        toast.success("Producto eliminado");
+        toast.success("Producto quitado de tu tienda");
         setShowDeleteAlert(false);
       },
       onError: (err) => {
-        toast.error(err.message ?? "Error al eliminar producto");
+        toast.error(err.message ?? "Error al quitar el producto");
       },
     });
   };
@@ -117,8 +117,8 @@ export function ProductCard({
       ? "bg-amber-500"
       : "bg-emerald-500";
 
-  // Show skeleton while deleting (mutation)
-  if (deleteProduct.isPending) {
+  // Show skeleton while removing from store (mutation)
+  if (removeFromStore.isPending) {
     return <ProductCardSkeleton />;
   }
 
@@ -219,7 +219,12 @@ export function ProductCard({
                   )}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <MoreHorizontal className={cn("text-muted-foreground", isList ? "size-4" : "size-5")} />
+                  <MoreHorizontal
+                    className={cn(
+                      "text-muted-foreground",
+                      isList ? "size-4" : "size-5",
+                    )}
+                  />
                 </Button>
               </DropdownMenuTrigger>
 
@@ -242,7 +247,7 @@ export function ProductCard({
                 >
                   {/* lucide-react Trash2 */}
                   <Trash2 className="mr-2 size-4" />
-                  Eliminar
+                  Quitar de mi tienda
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -253,7 +258,8 @@ export function ProductCard({
         <CardContent
           className={cn(
             "p-3",
-            isList && "flex min-w-0 flex-1 flex-row items-center justify-between gap-3",
+            isList &&
+              "flex min-w-0 flex-1 flex-row items-center justify-between gap-3",
           )}
         >
           {isList ? (
@@ -296,7 +302,9 @@ export function ProductCard({
                   {formatMoney(product.salePriceGross ?? 0)}
                 </p>
                 <div className="flex items-center gap-1.5 rounded-xl bg-muted/40 px-2.5 py-1">
-                  <span className={cn("size-1.5 rounded-full", stockDotClass)} />
+                  <span
+                    className={cn("size-1.5 rounded-full", stockDotClass)}
+                  />
                   <span className="text-[11px] font-bold text-foreground/80">
                     {stock}
                     <span className="ml-0.5 text-[9px] font-semibold text-muted-foreground">
@@ -370,11 +378,12 @@ export function ProductCard({
         <AlertDialogContent className="rounded-3xl p-8">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-extrabold tracking-tight">
-              ¿Eliminar “{product.name}”?
+              ¿Quitar “{product.name}” de tu tienda?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
-              Esta acción es irreversible. Se borrarán todos los registros de
-              inventario y precios asociados a este producto.
+              El producto dejará de venderse en tu tienda y se quitarán su
+              precio, imagen y stock de este local. El producto sigue existiendo
+              en el catálogo y puedes volver a agregarlo más tarde.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -383,14 +392,14 @@ export function ProductCard({
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmDelete}
+              onClick={handleConfirmRemove}
               className={cn(
                 "h-12 rounded-2xl bg-destructive font-black text-destructive-foreground hover:bg-destructive/90 active:scale-95",
-                deleteProduct.isPending ? "pointer-events-none opacity-60" : ""
+                removeFromStore.isPending ? "pointer-events-none opacity-60" : "",
               )}
-              disabled={deleteProduct.isPending}
+              disabled={removeFromStore.isPending}
             >
-              {deleteProduct.isPending ? (
+              {removeFromStore.isPending ? (
                 <span className="flex items-center gap-2">
                   <svg
                     className="animate-spin h-4 w-4 text-current"
@@ -412,10 +421,10 @@ export function ProductCard({
                       d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
                     ></path>
                   </svg>
-                  Eliminando...
+                  Quitando...
                 </span>
               ) : (
-                "Sí, eliminar producto"
+                "Sí, quitar de mi tienda"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useConversationOptional } from "@/src/contexts/ConversationContext";
-import { Button } from "@/src/components/ui/button";
-import { cn } from "@/src/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useConversationOptional } from "@/contexts/ConversationContext";
+import { cn } from "@/lib/utils";
 
 export function ConversationList() {
   const conversation = useConversationOptional();

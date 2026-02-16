@@ -1,9 +1,9 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { StoreAlert } from "@/lib/alerts";
+import { fetcher } from "@/lib/api-client";
 import { useAuth } from "@clerk/nextjs";
-import { fetcher } from "@/src/lib/api-client";
-import type { StoreAlert } from "@/src/lib/alerts";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function useAlerts() {
   const { getToken } = useAuth();
@@ -24,11 +24,9 @@ export function useMarkAlertRead() {
   return useMutation({
     mutationFn: async (alertId: string) => {
       const token = await getToken();
-      return fetcher<StoreAlert>(
-        `/api/v1/alerts/${alertId}/read`,
-        token,
-        { method: "PATCH" }
-      );
+      return fetcher<StoreAlert>(`/api/v1/alerts/${alertId}/read`, token, {
+        method: "PATCH",
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });

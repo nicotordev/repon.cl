@@ -58,6 +58,51 @@ app.get("/adjustments", async (c) => {
   return c.json(adjustments);
 });
 
+app.get("/catalog", async (c) => {
+  const store = await getStore(c);
+  if (!store) return c.json({ error: "Unauthorized or store not found" }, 401);
+
+  const query = c.req.query("q");
+  if (!query || query.trim().length < 2) {
+    return c.json([]);
+  }
+  const rows = await inventoryService.searchCatalog(store.id, query.trim());
+  return c.json(rows);
+});
+
+const AddProductToStoreSchema = z.object({
+  productId: z.string().min(1),
+  salePriceGross: z.number().int().positive().optional(),
+  isPerishable: z.boolean().optional(),
+  defaultShelfLifeDays: z.number().int().positive().optional(),
+  initialStock: z.number().int().min(0).optional(),
+  initialUnitCostGross: z.number().int().optional(),
+});
+
+app.post("/catalog/add", async (c) => {
+  const store = await getStore(c);
+  if (!store) return c.json({ error: "Unauthorized or store not found" }, 401);
+
+  const body = await c.req.json();
+  const parsed = AddProductToStoreSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid input", details: parsed.error }, 400);
+  }
+  try {
+    const product = await inventoryService.addProductToStore(store.id, parsed.data);
+    return c.json(product, 201);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error al agregar producto";
+    if (message.includes("ya está en tu tienda")) {
+      return c.json({ error: message }, 409);
+    }
+    if (message.includes("not found")) {
+      return c.json({ error: "Producto no encontrado" }, 404);
+    }
+    return c.json({ error: message }, 500);
+  }
+});
+
 app.delete("/:id", async (c) => {
   const store = await getStore(c);
   if (!store) return c.json({ error: "Unauthorized or store not found" }, 401);
@@ -65,26 +110,37 @@ app.delete("/:id", async (c) => {
   const productId = c.req.param("id");
 
   try {
-    const deleted = await inventoryService.deleteProduct(store.id, productId);
-    if (deleted === null) return c.json({ error: "Product not found" }, 404);
+    const removed = await inventoryService.removeProductFromStore(
+      store.id,
+      productId,
+    );
+    if (removed === null) {
+      return c.json({ error: "Producto no encontrado en tu tienda" }, 404);
+    }
     return c.json({ ok: true });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError) {
       if (err.code === "P2025") {
-        return c.json({ error: "Product not found" }, 404);
+        return c.json(
+          { error: "Producto no encontrado en tu tienda" },
+          404,
+        );
       }
       if (err.code === "P2003") {
         return c.json(
           {
             error:
-              "No se puede eliminar el producto porque tiene movimientos asociados (stock, ventas o compras).",
+              "No se puede quitar el producto: tiene movimientos asociados (stock, ventas o compras).",
           },
           400,
         );
       }
     }
-    console.error("[inventory.route] delete product failed:", err);
-    return c.json({ error: "Failed to delete product" }, 500);
+    console.error("[inventory.route] remove product from store failed:", err);
+    return c.json(
+      { error: "Error al quitar el producto de la tienda" },
+      500,
+    );
   }
 });
 
