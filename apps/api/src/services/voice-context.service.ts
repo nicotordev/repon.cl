@@ -12,7 +12,13 @@ import {
 
 export type VoiceContextSuccess = {
   ok: true;
-  store: { id: string; name: string; rut: string | null; timezone: string; currency: string };
+  store: {
+    id: string;
+    name: string;
+    rut: string | null;
+    timezone: string;
+    currency: string;
+  };
   session: { id: string };
   storeContext: string;
   conversationHistory: string;
@@ -81,9 +87,12 @@ export async function getVoiceRequestContext(args: {
     };
   }
 
-  if (!session) {
-    session = await createVoiceSession(store, user.id);
-  }
+  const resolvedSessionId = session
+    ? session.id
+    : (await createVoiceSession(
+        { id: store.id, timezone: store.timezone },
+        user.id,
+      )).id;
 
   // 3. Build context and load history in parallel
   const [storeContext, historyPairs] = await Promise.all([
@@ -94,15 +103,21 @@ export async function getVoiceRequestContext(args: {
       timezone: store.timezone,
       currency: store.currency,
     }),
-    loadConversationHistory(session.id),
+    loadConversationHistory(resolvedSessionId),
   ]);
 
   const conversationHistory = formatHistoryForPrompt(historyPairs);
 
   return {
     ok: true,
-    store,
-    session,
+    store: {
+      id: store.id,
+      name: store.name,
+      rut: store.rut,
+      timezone: store.timezone,
+      currency: store.currency,
+    },
+    session: { id: resolvedSessionId },
     storeContext,
     conversationHistory,
   };

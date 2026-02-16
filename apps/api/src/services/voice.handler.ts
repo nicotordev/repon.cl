@@ -157,7 +157,7 @@ export async function handleVoice(c: Context): Promise<Response> {
 
           for await (const part of streamResult.fullStream) {
             if (part.type === "text-delta") {
-              enqueue(controller, JSON.stringify({ type: "chunk", text: part.textDelta }));
+              enqueue(controller, JSON.stringify({ type: "chunk", text: part.text }));
             } else if (part.type === "tool-call") {
               enqueue(controller, JSON.stringify({ type: "thought", text: `Ejecutando ${part.toolName}...` }));
             }

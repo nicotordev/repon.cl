@@ -6,7 +6,9 @@ type StoreScopedUser = {
   name: string | null;
 };
 
-export async function resolveUserByClerkId(clerkUserId: string): Promise<StoreScopedUser | null> {
+export async function resolveUserByClerkId(
+  clerkUserId: string,
+): Promise<StoreScopedUser | null> {
   const existingUser = await prisma.user.findFirst({
     where: { clerkId: clerkUserId },
     select: { id: true, name: true },
@@ -18,13 +20,18 @@ export async function resolveUserByClerkId(clerkUserId: string): Promise<StoreSc
     const createdUser = await userService.getOrCreateUserByClerkId(clerkUserId);
     return { id: createdUser.id, name: createdUser.name };
   } catch (error) {
-    console.error("[StoreService] Failed to provision local user from Clerk", error);
+    console.error(
+      "[StoreService] Failed to provision local user from Clerk",
+      error,
+    );
     return null;
   }
 }
 
 async function createDefaultStoreForUser(user: StoreScopedUser) {
-  const displayName = user.name?.trim() ? `Tienda de ${user.name.trim()}` : "Mi tienda";
+  const displayName = user.name?.trim()
+    ? `Tienda de ${user.name.trim()}`
+    : "Mi tienda";
 
   return prisma.$transaction(async (tx) => {
     const member = await tx.storeMember.findFirst({

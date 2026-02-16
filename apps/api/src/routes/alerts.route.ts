@@ -1,15 +1,20 @@
 import { Hono } from "hono";
 import { getAuth } from "@hono/clerk-auth";
 import prisma from "../lib/prisma.js";
-import { resolveStoreForUser } from "../services/store.service.js";
+import {
+  resolveStoreForUser,
+  resolveUserByClerkId,
+} from "../services/store.service.js";
 
 const app = new Hono();
 
 async function getStore(c: any) {
   const session = await getAuth(c);
   if (!session || !session.userId) return null;
+  const user = await resolveUserByClerkId(session.userId);
+  if (!user) return null;
   const storeId = c.req.header("x-store-id");
-  return await resolveStoreForUser(session.userId, storeId || null);
+  return await resolveStoreForUser(user, storeId || null);
 }
 
 /** GET /api/v1/alerts — list alerts for the current user's store (unread first) */

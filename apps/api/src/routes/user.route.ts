@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import userService from "../services/user.service.js";
-import { resolveStoreForUser } from "../services/store.service.js";
+import {
+  resolveStoreForUser,
+  resolveUserByClerkId,
+} from "../services/store.service.js";
 import { getAuth } from "@hono/clerk-auth";
 import prisma from "../lib/prisma.js";
 
@@ -97,7 +100,8 @@ app.patch("/", async (c) => {
   });
 
   if (storePayload?.name != null && storePayload.name.trim() !== "") {
-    const store = await resolveStoreForUser(session.userId, null);
+    const user = await resolveUserByClerkId(session.userId);
+    const store = user ? await resolveStoreForUser(user, null) : null;
     if (store) {
       await prisma.store.update({
         where: { id: store.id },

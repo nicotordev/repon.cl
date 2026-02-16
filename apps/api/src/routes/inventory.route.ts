@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { getAuth } from "@hono/clerk-auth";
 import inventoryService from "../services/inventory.service.js";
-import { resolveStoreForUser } from "../services/store.service.js";
+import {
+  resolveStoreForUser,
+  resolveUserByClerkId,
+} from "../services/store.service.js";
 import {
   uploadProductImage,
   isR2Configured,
@@ -19,8 +22,10 @@ const app = new Hono();
 async function getStore(c: any) {
   const session = await getAuth(c);
   if (!session || !session.userId) return null;
+  const user = await resolveUserByClerkId(session.userId);
+  if (!user) return null;
   const storeId = c.req.header("x-store-id");
-  return await resolveStoreForUser(session.userId, storeId || null);
+  return await resolveStoreForUser(user, storeId || null);
 }
 
 app.get("/", async (c) => {
