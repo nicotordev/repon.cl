@@ -39,17 +39,15 @@ export async function getVoiceRequestContext(args: {
 }): Promise<VoiceContextResult> {
   const { clerkUserId, requestedStoreId, sessionId } = args;
 
-  // Resolve store first (from existing session or by user membership)
-  let store: Awaited<ReturnType<typeof resolveStoreForUser>> =
-    await resolveStoreForUser(clerkUserId, requestedStoreId);
+  // 1. Resolve store and session in parallel where possible
+  // resolveStoreForUser already handles user resolution and store membership
+  let [store, session] = await Promise.all([
+    resolveStoreForUser(clerkUserId, requestedStoreId),
+    sessionId ? findSessionForUser(sessionId, clerkUserId) : Promise.resolve(null),
+  ]);
 
-  let session: { id: string } | null = null;
-  if (sessionId) {
-    const existing = await findSessionForUser(sessionId, clerkUserId);
-    if (existing) {
-      session = existing;
-      store = existing.store; // use store from session so context matches
-    }
+  if (session) {
+    store = (session as any).store; // use store from session for consistency
   }
 
   if (!store) {
@@ -71,15 +69,18 @@ export async function getVoiceRequestContext(args: {
     session = await createVoiceSession(store.id, clerkUserId);
   }
 
-  const storeContext = buildStoreContext({
-    id: store.id,
-    name: store.name,
-    rut: store.rut,
-    timezone: store.timezone,
-    currency: store.currency,
-  });
+  // 2. Build context and load history in parallel
+  const [storeContext, historyPairs] = await Promise.all([
+    buildStoreContext({
+      id: store.id,
+      name: store.name,
+      rut: store.rut,
+      timezone: store.timezone,
+      currency: store.currency,
+    }),
+    loadConversationHistory(session.id),
+  ]);
 
-  const historyPairs = await loadConversationHistory(session.id);
   const conversationHistory = formatHistoryForPrompt(historyPairs);
 
   return {

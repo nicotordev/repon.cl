@@ -85,6 +85,23 @@ export function useUpdateProduct() {
   });
 }
 
+export function useDeleteProduct() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (productId: string) => {
+      const token = await getToken();
+      return fetcher<void>(`/api/v1/inventory/${productId}`, token, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+}
+
 export function useUploadProductImage() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();

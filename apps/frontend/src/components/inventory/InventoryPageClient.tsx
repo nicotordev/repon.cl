@@ -148,7 +148,7 @@ export function InventoryPageClient({ initialProducts }: Props) {
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {filteredProducts.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}

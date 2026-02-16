@@ -10,6 +10,7 @@ import {
   deleteByPublicUrl,
 } from "../services/r2.service.js";
 import prisma from "../lib/prisma.js";
+import { Prisma } from "../lib/generated/prisma/client.js";
 import { z } from "zod";
 
 const app = new Hono();
@@ -50,6 +51,35 @@ app.get("/adjustments", async (c) => {
 
   const adjustments = await inventoryService.getAdjustments(store.id);
   return c.json(adjustments);
+});
+
+app.delete("/:id", async (c) => {
+  const store = await getStore(c);
+  if (!store) return c.json({ error: "Unauthorized or store not found" }, 401);
+
+  const productId = c.req.param("id");
+
+  try {
+    await inventoryService.deleteProduct(store.id, productId);
+    return c.json({ ok: true });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === "P2025") {
+        return c.json({ error: "Product not found" }, 404);
+      }
+      if (err.code === "P2003") {
+        return c.json(
+          {
+            error:
+              "No se puede eliminar el producto porque tiene movimientos asociados (stock, ventas o compras).",
+          },
+          400,
+        );
+      }
+    }
+    console.error("[inventory.route] delete product failed:", err);
+    return c.json({ error: "Failed to delete product" }, 500);
+  }
 });
 
 app.get("/:id", async (c) => {

@@ -72,11 +72,23 @@ export async function handleVoice(c: Context): Promise<Response> {
       });
     }
 
-    const contextResult = await getVoiceRequestContext({
+    // Start transcription, audio buffer read, and context resolution in parallel
+    const audioBytesPromise = audio.arrayBuffer().then((buf) => new Uint8Array(buf));
+    const contextPromise = getVoiceRequestContext({
       clerkUserId,
       requestedStoreId,
       sessionId,
     });
+
+    // Start transcription as soon as we can (needs audioBytesPromise)
+    const transcriptionPromise = audioBytesPromise.then((bytes) =>
+      transcribeAudio(bytes),
+    );
+
+    const [contextResult, transcriptionResult] = await Promise.all([
+      contextPromise,
+      transcriptionPromise,
+    ]);
 
     if (!contextResult.ok) {
       return c.json(
@@ -89,14 +101,15 @@ export async function handleVoice(c: Context): Promise<Response> {
     }
 
     const { store, session, storeContext, conversationHistory } = contextResult;
-    const audioBytes = new Uint8Array(await audio.arrayBuffer());
-    const { text: transcribedText, provider } = await transcribeAudio(audioBytes);
+    const { text: transcribedText, provider } = transcriptionResult;
     const userText = safeTrim(transcribedText);
 
     if (userText.length === 0) {
-      await prisma.voiceTranscript.create({
+      // Log empty transcript in background
+      prisma.voiceTranscript.create({
         data: { sessionId: session.id, inputText: "", provider },
-      });
+      }).catch(err => console.error("[voice.handler] background transcript error:", err));
+
       return c.json(
         {
           sessionId: session.id,
@@ -107,9 +120,10 @@ export async function handleVoice(c: Context): Promise<Response> {
       );
     }
 
-    await prisma.voiceTranscript.create({
+    // Log transcript in background
+    prisma.voiceTranscript.create({
       data: { sessionId: session.id, inputText: userText, provider },
-    });
+    }).catch(err => console.error("[voice.handler] background transcript error:", err));
 
     let streamResult: ReturnType<typeof createVoiceStream>;
     try {
@@ -151,7 +165,7 @@ export async function handleVoice(c: Context): Promise<Response> {
           const now = new Date();
 
           if (toolInvocations.length > 0) {
-            for (const inv of toolInvocations) {
+            await Promise.all(toolInvocations.map(async (inv) => {
               const actionName = VoiceActionNameSchema.safeParse(inv.toolName);
               const name = actionName.success ? actionName.data : "other";
               await prisma.voiceAction.create({
@@ -168,7 +182,7 @@ export async function handleVoice(c: Context): Promise<Response> {
                   executedAt: now,
                 },
               });
-            }
+            }));
           } else {
             await prisma.voiceAction.create({
               data: {

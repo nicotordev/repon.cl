@@ -275,6 +275,12 @@ const inventoryService = {
       return adjustment;
     });
   },
+
+  async deleteProduct(storeId: string, productId: string) {
+    return await prisma.product.delete({
+      where: { id: productId, storeId },
+    });
+  },
 };
 
 export default inventoryService;

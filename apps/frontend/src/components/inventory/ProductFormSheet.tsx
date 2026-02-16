@@ -179,7 +179,9 @@ export function ProductFormSheet({ products }: Props) {
       return;
     }
 
-    const priceNum = salePriceGross.trim() ? parseInt(salePriceGross, 10) : undefined;
+    const priceNum = salePriceGross.trim()
+      ? parseInt(salePriceGross, 10)
+      : undefined;
     if (
       salePriceGross.trim() &&
       (priceNum === undefined || Number.isNaN(priceNum) || priceNum < 0)
@@ -218,7 +220,7 @@ export function ProductFormSheet({ products }: Props) {
                   onError: (err) => {
                     toast.error(err.message ?? "Error al subir la imagen");
                   },
-                }
+                },
               );
             } else {
               toast.success("Producto actualizado");
@@ -228,7 +230,7 @@ export function ProductFormSheet({ products }: Props) {
           onError: (err) => {
             toast.error(err.message ?? "Error al actualizar");
           },
-        }
+        },
       );
     } else {
       const stockNum = initialStock.trim() ? parseInt(initialStock, 10) : 0;
@@ -266,7 +268,7 @@ export function ProductFormSheet({ products }: Props) {
                     toast.error(err.message ?? "No se pudo subir la imagen");
                     handleOpenChange(false);
                   },
-                }
+                },
               );
             } else {
               toast.success("Producto creado");
@@ -276,75 +278,120 @@ export function ProductFormSheet({ products }: Props) {
           onError: (err) => {
             toast.error(err.message ?? "Error al crear");
           },
-        }
+        },
       );
     }
   };
 
-  const categoryOptions = categories.length > 0 ? categories : ["Bebidas", "Abarrotes", "Lácteos", "Verduras", "Panadería", "Otro"];
+  const categoryOptions =
+    categories.length > 0
+      ? categories
+      : ["Bebidas", "Abarrotes", "Lácteos", "Verduras", "Panadería", "Otro"];
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>
-            {isEdit ? "Editar producto" : "Nuevo producto"}
+      <SheetContent
+        side="bottom"
+        className="max-h-[92vh] overflow-y-auto rounded-t-[2.5rem] px-6 pb-8"
+      >
+        <SheetHeader className="pb-4">
+          <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted" />
+          <SheetTitle className="text-xl font-black tracking-tight">
+            {isEdit ? "Editar Producto" : "Nuevo Producto"}
           </SheetTitle>
         </SheetHeader>
-        <form onSubmit={handleSubmit} className="mt-4 space-y-5">
-          <FieldGroup>
-            <Field>
-              <FieldLabel>Nombre *</FieldLabel>
-              <FieldContent>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej. Coca-Cola 1.5L"
-                  className="rounded-xl"
-                />
-              </FieldContent>
-            </Field>
 
-            <Field>
-              <FieldLabel>Marca</FieldLabel>
-              <FieldContent>
-                <Input
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  placeholder="Ej. Coca-Cola"
-                  className="rounded-xl"
-                />
-              </FieldContent>
-            </Field>
-
-            <Field>
-              <FieldLabel>Categoría</FieldLabel>
-              <FieldContent>
-                <Select
-                  value={category || "_none"}
-                  onValueChange={(v) => setCategory(v === "_none" ? "" : v)}
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Seleccionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">Sin categoría</SelectItem>
-                    {categoryOptions.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldContent>
-            </Field>
-
-            <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Sección: Información Principal */}
+          <div className="space-y-4">
+            <FieldGroup className="grid gap-4">
               <Field>
-                <FieldLabel>Unidad de medida</FieldLabel>
+                <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Nombre del Producto *
+                </FieldLabel>
                 <FieldContent>
-                  <Select value={uom} onValueChange={(v) => setUom(v as UnitOfMeasure)}>
-                    <SelectTrigger className="rounded-xl">
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ej. Coca-Cola 1.5L"
+                    className="h-12 rounded-2xl border-border/50 bg-muted/20 focus:ring-primary/20"
+                  />
+                </FieldContent>
+              </Field>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Field>
+                  <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Marca
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      value={brand}
+                      onChange={(e) => setBrand(e.target.value)}
+                      placeholder="Ej. Coca-Cola"
+                      className="h-12 rounded-2xl"
+                    />
+                  </FieldContent>
+                </Field>
+
+                <Field>
+                  <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Categoría
+                  </FieldLabel>
+                  <FieldContent>
+                    <Select
+                      value={category || "_none"}
+                      onValueChange={(v) => setCategory(v === "_none" ? "" : v)}
+                    >
+                      <SelectTrigger className="h-12 rounded-2xl border-border/50 bg-muted/20">
+                        <SelectValue placeholder="Seleccionar..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Sin categoría</SelectItem>
+                        {categoryOptions.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FieldContent>
+                </Field>
+              </div>
+            </FieldGroup>
+          </div>
+
+          {/* Sección: Precio y Stock */}
+          <div className="rounded-3xl border border-border/50 bg-muted/10 p-5">
+            <div className="grid grid-cols-2 gap-6">
+              <Field>
+                <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-primary dark:text-primary">
+                  Precio Venta (CLP)
+                </FieldLabel>
+                <FieldContent className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    type="number"
+                    value={salePriceGross}
+                    onChange={(e) => setSalePriceGross(e.target.value)}
+                    placeholder="0"
+                    className="h-12 rounded-xl pl-8 font-bold text-primary focus:ring-primary/20"
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Unidad
+                </FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={uom}
+                    onValueChange={(v) => setUom(v as UnitOfMeasure)}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -357,110 +404,111 @@ export function ProductFormSheet({ products }: Props) {
                   </Select>
                 </FieldContent>
               </Field>
-              <Field>
-                <FieldLabel>Precio de venta (CLP)</FieldLabel>
-                <FieldContent>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={salePriceGross}
-                    onChange={(e) => setSalePriceGross(e.target.value)}
-                    placeholder="0"
-                    className="rounded-xl"
-                  />
-                </FieldContent>
-              </Field>
             </div>
 
             {!isEdit && (
-              <>
+              <div className="mt-4 grid grid-cols-2 gap-6 border-t border-border/50 pt-4">
                 <Field>
-                  <FieldLabel>Stock inicial</FieldLabel>
+                  <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Stock Inicial
+                  </FieldLabel>
                   <FieldContent>
                     <Input
                       type="number"
-                      min={0}
                       value={initialStock}
                       onChange={(e) => setInitialStock(e.target.value)}
-                      className="rounded-xl"
+                      className="h-12 rounded-xl"
                     />
                   </FieldContent>
                 </Field>
                 <Field>
-                  <FieldLabel>Código de barras</FieldLabel>
+                  <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Cód. Barras
+                  </FieldLabel>
                   <FieldContent>
                     <Input
                       value={barcode}
                       onChange={(e) => setBarcode(e.target.value)}
                       placeholder="Opcional"
-                      className="rounded-xl"
+                      className="h-12 rounded-xl"
                     />
                   </FieldContent>
                 </Field>
-              </>
+              </div>
             )}
+          </div>
 
-            <Field className="flex flex-row items-center justify-between rounded-2xl border border-border/50 bg-muted/10 p-4">
-              <div>
-                <FieldLabel>Perecedero</FieldLabel>
-                <p className="text-xs text-muted-foreground">
-                  Productos con fecha de vencimiento
+          {/* Sección: Foto y Perecederos */}
+          <div className="space-y-5">
+            <Field className="flex flex-row items-center justify-between rounded-2xl border border-secondary/25 bg-secondary/10 p-4 ring-1 ring-secondary/20">
+              <div className="space-y-0.5">
+                <FieldLabel className="text-sm font-bold">
+                  ¿Es perecedero?
+                </FieldLabel>
+                <p className="text-[11px] text-muted-foreground">
+                  Activa para gestionar fechas de vencimiento.
                 </p>
               </div>
               <Switch
                 checked={isPerishable}
                 onCheckedChange={setIsPerishable}
-                className="data-[state=checked]:bg-primary"
+                className="data-[state=checked]:bg-secondary data-[state=unchecked]:bg-muted"
               />
             </Field>
 
             {isPerishable && (
-              <Field>
-                <FieldLabel>Días de vida útil (opcional)</FieldLabel>
+              <Field className="animate-in slide-in-from-top-2">
+                <FieldLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Vida útil estándar (Días)
+                </FieldLabel>
                 <FieldContent>
                   <Input
                     type="number"
-                    min={1}
                     value={defaultShelfLifeDays}
                     onChange={(e) => setDefaultShelfLifeDays(e.target.value)}
                     placeholder="Ej. 7"
-                    className="rounded-xl"
+                    className="h-12 rounded-xl"
                   />
                 </FieldContent>
               </Field>
             )}
 
             <Field>
-              <FieldLabel>Foto del producto</FieldLabel>
-              <FieldContent className="space-y-2">
-                {currentImageUrl ? (
-                  <div className="relative inline-block">
-                    <img
-                      src={currentImageUrl}
-                      alt="Vista previa"
-                      className="h-24 w-24 rounded-xl border object-cover"
-                    />
-                    {canRemoveImage && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveImage}
-                        disabled={deleteImage.isPending}
-                        className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
-                        aria-label="Eliminar foto"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    )}
-                  </div>
-                ) : null}
-                <div className="flex items-center gap-2">
+              <FieldLabel className="mb-3 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Imagen del Producto
+              </FieldLabel>
+              <div className="flex items-center gap-5">
+                <div className="group relative size-24 shrink-0 overflow-hidden rounded-[2rem] border-2 border-dashed border-border/50 bg-muted/30 transition-colors hover:border-secondary/50">
+                  {currentImageUrl ? (
+                    <>
+                      <img
+                        src={currentImageUrl}
+                        alt="Preview"
+                        className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                      />
+                      {canRemoveImage && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-destructive text-white shadow-lg backdrop-blur-sm"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center text-muted-foreground/40">
+                      <ImagePlus className="size-6" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
                   <Label
                     htmlFor="product-image"
-                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-border/50 bg-muted/5 px-3 py-2 text-sm text-muted-foreground hover:bg-muted/10"
+                    className="inline-flex h-9 cursor-pointer items-center justify-center rounded-xl bg-secondary px-4 text-xs font-bold transition-all hover:bg-secondary/80 active:scale-95"
                   >
-                    <ImagePlus className="size-4" />
-                    {currentImageUrl ? "Cambiar imagen" : "Elegir imagen"}
+                    {currentImageUrl ? "Cambiar foto" : "Subir foto"}
                   </Label>
                   <input
                     id="product-image"
@@ -469,19 +517,19 @@ export function ProductFormSheet({ products }: Props) {
                     className="hidden"
                     onChange={handleImageChange}
                   />
+                  <p className="text-[10px] leading-tight text-muted-foreground">
+                    Formatos: JPG, PNG, WebP. <br /> Máximo 5MB por archivo.
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  JPEG, PNG, WebP o GIF. Máx. {MAX_IMAGE_MB} MB.
-                </p>
-              </FieldContent>
+              </div>
             </Field>
-          </FieldGroup>
+          </div>
 
-          <SheetFooter className="flex-row gap-2 sm:gap-2">
+          <SheetFooter className="sticky bottom-0 mt-8 flex flex-row gap-3 border-t border-border/50 bg-background pt-4">
             <Button
               type="button"
-              variant="outline"
-              className="flex-1 rounded-xl"
+              variant="ghost"
+              className="h-12 flex-1 rounded-2xl font-bold"
               onClick={() => handleOpenChange(false)}
               disabled={isPending}
             >
@@ -489,11 +537,16 @@ export function ProductFormSheet({ products }: Props) {
             </Button>
             <Button
               type="submit"
-              className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+              className="h-12 flex-[2] rounded-2xl bg-primary font-black text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/80 active:scale-95 disabled:opacity-50"
               disabled={isPending}
             >
-              {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-              {isEdit ? "Guardar cambios" : "Crear producto"}
+              {isPending ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : isEdit ? (
+                "Guardar Cambios"
+              ) : (
+                "Crear Producto"
+              )}
             </Button>
           </SheetFooter>
         </form>
