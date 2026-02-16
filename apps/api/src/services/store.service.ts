@@ -6,7 +6,7 @@ type StoreScopedUser = {
   name: string | null;
 };
 
-async function resolveUserByClerkId(clerkUserId: string): Promise<StoreScopedUser | null> {
+export async function resolveUserByClerkId(clerkUserId: string): Promise<StoreScopedUser | null> {
   const existingUser = await prisma.user.findFirst({
     where: { clerkId: clerkUserId },
     select: { id: true, name: true },
@@ -51,14 +51,12 @@ async function createDefaultStoreForUser(user: StoreScopedUser) {
   });
 }
 
-/** Resuelve la tienda para un usuario (por clerkId). requestedStoreId opcional. */
+/** Resuelve la tienda para un usuario (ya resuelto). requestedStoreId opcional. */
 export async function resolveStoreForUser(
-  clerkUserId: string,
+  user: StoreScopedUser,
   requestedStoreId: string | null,
 ) {
-  const user = await resolveUserByClerkId(clerkUserId);
-  const userId = user?.id;
-  if (!userId) return null;
+  const userId = user.id;
 
   if (requestedStoreId) {
     const member = await prisma.storeMember.findFirst({

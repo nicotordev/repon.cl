@@ -1,6 +1,6 @@
 import prisma from "../lib/prisma.js";
 
-const HISTORY_TURNS = 10;
+const HISTORY_TURNS = 5;
 
 function assistantMessageFromAction(action: {
   resultJson: string | null;
@@ -23,22 +23,13 @@ function assistantMessageFromAction(action: {
 /** Sesión de voz con store; solo existe si el usuario tiene acceso a esa tienda. */
 export async function findSessionForUser(
   sessionId: string,
-  clerkUserId: string,
+  userId: string,
 ) {
   const session = await prisma.voiceSession.findUnique({
     where: { id: sessionId },
     include: { store: true },
   });
   if (!session) return null;
-
-  const userId =
-    (
-      await prisma.user.findFirst({
-        where: { clerkId: clerkUserId },
-        select: { id: true },
-      })
-    )?.id ?? "";
-  if (!userId) return null;
 
   const member = await prisma.storeMember.findFirst({
     where: { storeId: session.storeId, userId },
@@ -48,24 +39,12 @@ export async function findSessionForUser(
   return session;
 }
 
-export async function createVoiceSession(storeId: string, clerkUserId: string) {
-  const userId =
-    (
-      await prisma.user.findFirst({
-        where: { clerkId: clerkUserId },
-        select: { id: true },
-      })
-    )?.id ?? null;
-
-  const store = await prisma.store.findUnique({
-    where: { id: storeId },
-    select: { timezone: true },
-  });
-  const locale = store?.timezone?.startsWith("America/") ? "es-CL" : "es-CL";
+export async function createVoiceSession(store: { id: string; timezone: string }, userId: string) {
+  const locale = store.timezone?.startsWith("America/") ? "es-CL" : "es-CL";
 
   return prisma.voiceSession.create({
     data: {
-      storeId,
+      storeId: store.id,
       userId,
       locale,
       device: "web",

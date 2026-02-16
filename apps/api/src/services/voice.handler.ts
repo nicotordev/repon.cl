@@ -155,36 +155,44 @@ export async function handleVoice(c: Context): Promise<Response> {
             transcript: userText,
           }));
 
-          for await (const chunk of streamResult.textStream) {
-            enqueue(controller, JSON.stringify({ type: "chunk", text: chunk }));
+          for await (const part of streamResult.fullStream) {
+            if (part.type === "text-delta") {
+              enqueue(controller, JSON.stringify({ type: "chunk", text: part.textDelta }));
+            } else if (part.type === "tool-call") {
+              enqueue(controller, JSON.stringify({ type: "thought", text: `Ejecutando ${part.toolName}...` }));
+            }
           }
 
           const steps = await streamResult.steps;
           const toolInvocations = getToolInvocationsFromSteps(steps);
           const fullText = (await streamResult.text)?.trim() ?? (toolInvocations.length > 0 ? "Listo." : "");
-          const now = new Date();
-
           if (toolInvocations.length > 0) {
-            await Promise.all(toolInvocations.map(async (inv) => {
+            const now = new Date();
+            const actionsData = toolInvocations.map((inv) => {
               const actionName = VoiceActionNameSchema.safeParse(inv.toolName);
               const name = actionName.success ? actionName.data : "other";
-              await prisma.voiceAction.create({
-                data: {
-                  sessionId: session.id,
-                  storeId: store.id,
-                  type: mapActionNameToType(name),
-                  status: VoiceActionStatus.EXECUTED,
-                  intentName: inv.toolName,
-                  parametersJson:
-                    inv.input != null ? JSON.stringify(inv.input) : null,
-                  resultJson:
-                    inv.output != null ? JSON.stringify(inv.output) : null,
-                  executedAt: now,
-                },
-              });
-            }));
+              return {
+                sessionId: session.id,
+                storeId: store.id,
+                type: mapActionNameToType(name),
+                status: VoiceActionStatus.EXECUTED,
+                intentName: inv.toolName,
+                parametersJson:
+                  inv.input != null ? JSON.stringify(inv.input) : null,
+                resultJson:
+                  inv.output != null ? JSON.stringify(inv.output) : null,
+                executedAt: now,
+              };
+            });
+
+            // Log actions in background without blocking the "done" message
+            prisma.voiceAction.createMany({
+              data: actionsData,
+            }).catch(err => console.error("[voice.handler] background actions error:", err));
           } else {
-            await prisma.voiceAction.create({
+            const now = new Date();
+            // Log answer action in background
+            prisma.voiceAction.create({
               data: {
                 sessionId: session.id,
                 storeId: store.id,
@@ -195,7 +203,7 @@ export async function handleVoice(c: Context): Promise<Response> {
                 resultJson: JSON.stringify({ message: fullText }),
                 executedAt: now,
               },
-            });
+            }).catch(err => console.error("[voice.handler] background answer error:", err));
           }
 
           enqueue(controller, JSON.stringify({ type: "done", message: fullText }));

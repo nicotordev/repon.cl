@@ -34,6 +34,7 @@ export function VoiceButton({ className }: { className?: string }) {
     result,
     streamingTranscript,
     streamingResponse,
+    streamingThought,
     startRecording,
     stopRecording,
     reset,
@@ -141,6 +142,11 @@ export function VoiceButton({ className }: { className?: string }) {
               {state === "PROCESSING" && streamingResponse && (
                 <span className="inline-block w-2 h-4 ml-0.5 bg-muted-foreground/60 animate-pulse" aria-hidden />
               )}
+            </p>
+          )}
+          {streamingThought && (
+            <p className="italic text-muted-foreground animate-pulse">
+              {streamingThought}
             </p>
           )}
           {result && (

@@ -185,6 +185,7 @@ async function findProductByNameOrBarcode(storeId: string, query: string) {
   const q = query.trim();
   if (q.length === 0) return null;
 
+  // Fast path: exact matches first; only run contains if needed.
   const byBarcode = await prisma.productBarcode.findFirst({
     where: {
       code: q,
@@ -194,7 +195,6 @@ async function findProductByNameOrBarcode(storeId: string, query: string) {
       product: true,
     },
   });
-
   if (byBarcode?.product) return byBarcode.product;
 
   const byName = await prisma.product.findFirst({
@@ -203,7 +203,6 @@ async function findProductByNameOrBarcode(storeId: string, query: string) {
       name: { equals: q, mode: "insensitive" },
     },
   });
-
   if (byName) return byName;
 
   const byContains = await prisma.product.findFirst({
@@ -214,7 +213,7 @@ async function findProductByNameOrBarcode(storeId: string, query: string) {
     orderBy: { updatedAt: "desc" },
   });
 
-  return byContains;
+  return byContains || null;
 }
 
 export async function executeAddStock(

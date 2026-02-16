@@ -36,4 +36,6 @@ export interface VoiceRecordingState {
   streamingTranscript: string | null;
   /** Texto que va llegando mientras se hace stream de la respuesta (antes de pasar a RESPONDING). */
   streamingResponse: string | null;
+  /** Pensamiento actual de la IA (ej: "Ejecutando create_product...") */
+  streamingThought: string | null;
 }

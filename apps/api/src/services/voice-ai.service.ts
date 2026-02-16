@@ -26,7 +26,29 @@ export type VoiceTurnFailure = {
 };
 export type VoiceTurnResult = VoiceTurnSuccess | VoiceTurnFailure;
 
-const MAX_STEPS = 5;
+const MAX_STEPS_DEFAULT = 3;
+const MAX_STEPS_SIMPLE_PRODUCT = 2;
+
+function resolveMaxSteps(userText: string): number {
+  const text = userText.toLowerCase().trim();
+  const words = text.split(/\s+/).filter(Boolean);
+  const isSimple = words.length > 0 && words.length <= 8;
+  const hasSimpleVerb =
+    /(crear?|agregar?|añadir|anadir|busca|buscar|ver|mostrar|mu[eé]strame)/i.test(
+      text,
+    );
+  const hasComplexIntent =
+    /(venta|compra|proveedor|cliente|m[eé]trica|alerta|ajuste|vencid|stock lot|lote)/i.test(
+      text,
+    );
+  const hasChainedIntent = /\b(y|luego|despu[eé]s|tamb[ié]n)\b/i.test(text);
+  const isSimpleProductIntent =
+    isSimple && hasSimpleVerb && !hasComplexIntent && !hasChainedIntent;
+
+  return isSimpleProductIntent
+    ? MAX_STEPS_SIMPLE_PRODUCT
+    : MAX_STEPS_DEFAULT;
+}
 
 export async function runVoiceTurn(args: {
   storeId: string;
@@ -40,6 +62,7 @@ export async function runVoiceTurn(args: {
     userText: args.userText,
     conversationHistory: args.conversationHistory ?? undefined,
   });
+  const maxSteps = resolveMaxSteps(args.userText);
 
   try {
     const result = await generateText({
@@ -47,7 +70,7 @@ export async function runVoiceTurn(args: {
       system,
       prompt,
       tools: buildVoiceTools(args.storeId),
-      stopWhen: stepCountIs(MAX_STEPS),
+      stopWhen: stepCountIs(maxSteps),
     });
 
     const text = (result.text ?? "").trim();
@@ -116,12 +139,13 @@ export function createVoiceStream(args: {
     userText: args.userText,
     conversationHistory: args.conversationHistory ?? undefined,
   });
+  const maxSteps = resolveMaxSteps(args.userText);
 
   return streamText({
     model: google(GEMINI_FLASH_LATEST),
     system,
     prompt,
     tools: buildVoiceTools(args.storeId),
-    stopWhen: stepCountIs(MAX_STEPS),
+    stopWhen: stepCountIs(maxSteps),
   });
 }

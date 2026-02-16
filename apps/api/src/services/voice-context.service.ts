@@ -1,6 +1,7 @@
 import {
   resolveStoreForUser,
   buildStoreContext,
+  resolveUserByClerkId,
 } from "./store.service.js";
 import {
   findSessionForUser,
@@ -11,7 +12,7 @@ import {
 
 export type VoiceContextSuccess = {
   ok: true;
-  store: NonNullable<Awaited<ReturnType<typeof resolveStoreForUser>>>;
+  store: { id: string; name: string; rut: string | null; timezone: string; currency: string };
   session: { id: string };
   storeContext: string;
   conversationHistory: string;
@@ -39,11 +40,26 @@ export async function getVoiceRequestContext(args: {
 }): Promise<VoiceContextResult> {
   const { clerkUserId, requestedStoreId, sessionId } = args;
 
-  // 1. Resolve store and session in parallel where possible
-  // resolveStoreForUser already handles user resolution and store membership
+  // 1. Resolve user first to share across lookups
+  const user = await resolveUserByClerkId(clerkUserId);
+  if (!user) {
+    return {
+      ok: false,
+      status: 200,
+      payload: {
+        transcript: "",
+        response: {
+          type: "clarification",
+          question: "No pude identificar tu usuario. Por favor, reintenta.",
+        },
+      },
+    };
+  }
+
+  // 2. Resolve store and session in parallel using the resolved user
   let [store, session] = await Promise.all([
-    resolveStoreForUser(clerkUserId, requestedStoreId),
-    sessionId ? findSessionForUser(sessionId, clerkUserId) : Promise.resolve(null),
+    resolveStoreForUser(user, requestedStoreId),
+    sessionId ? findSessionForUser(sessionId, user.id) : Promise.resolve(null),
   ]);
 
   if (session) {
@@ -66,10 +82,10 @@ export async function getVoiceRequestContext(args: {
   }
 
   if (!session) {
-    session = await createVoiceSession(store.id, clerkUserId);
+    session = await createVoiceSession(store, user.id);
   }
 
-  // 2. Build context and load history in parallel
+  // 3. Build context and load history in parallel
   const [storeContext, historyPairs] = await Promise.all([
     buildStoreContext({
       id: store.id,
