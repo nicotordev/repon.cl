@@ -1,20 +1,28 @@
 "use client";
 
-import { Topbar } from "./Topbar";
-import { MobileNav } from "./MobileNav";
-import { featureOffline, featureCopilot } from "@/src/lib/env";
+import { CopilotPanel } from "@/src/components/copilot/CopilotPanel";
 import { OfflineBanner } from "@/src/components/offline/OfflineBanner";
 import { PendingQueueSheet } from "@/src/components/offline/PendingQueueSheet";
-import { CopilotDock } from "@/src/components/copilot/CopilotDock";
-import { CopilotPanel } from "@/src/components/copilot/CopilotPanel";
 import { ConversationProvider } from "@/src/contexts/ConversationContext";
+import { featureCopilot, featureOffline } from "@/src/lib/env";
 import { useUIStore } from "@/src/store/ui.store";
+import { usePathname } from "next/navigation";
+import { MobileNav } from "./MobileNav";
+import { Topbar } from "./Topbar";
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const openSheet = useUIStore((s) => s.openSheet);
+  const pathname = usePathname();
+
+  const handleOpenChat = () => {
+    if (pathname === "/copilot" || pathname?.startsWith("/copilot/")) {
+      return;
+    }
+    openSheet("copilot");
+  };
 
   return (
-    <ConversationProvider onOpenChat={() => openSheet("copilot")}>
+    <ConversationProvider onOpenChat={handleOpenChat}>
       <div className="flex min-h-dvh flex-col bg-background">
         <Topbar />
         <main className="flex-1 overflow-auto pb-20">
@@ -23,12 +31,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </main>
         <MobileNav />
         {featureOffline && <PendingQueueSheet />}
-        {featureCopilot && (
-          <>
-            <CopilotDock />
-            <CopilotPanel />
-          </>
-        )}
+        {featureCopilot && <CopilotPanel />}
       </div>
     </ConversationProvider>
   );

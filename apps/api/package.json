@@ -15,6 +15,7 @@
     "@clerk/backend": "^2.31.0",
     "@hono/clerk-auth": "^3.1.0",
     "@hono/node-server": "^1.13.0",
+    "@onesignal/node-onesignal": "^5.3.1-beta1",
     "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
     "ai": "^6.0.86",

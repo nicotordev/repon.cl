@@ -1,16 +1,27 @@
 "use client";
 
+import { featureCopilot } from "@/src/lib/env";
+import { cn } from "@/src/lib/utils";
+import { BarChart3, LayoutGrid, Mic, Package, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Package, BarChart3, Settings } from "lucide-react";
-import { cn } from "@/src/lib/utils";
 
-const tabs: { path: string; label: string; icon: React.ElementType }[] = [
+type Tab = { path: string; label: string; icon: React.ElementType };
+
+const baseTabs: Tab[] = [
   { path: "/pos", label: "POS", icon: LayoutGrid },
   { path: "/inventory", label: "Inventario", icon: Package },
   { path: "/reports", label: "Reportes", icon: BarChart3 },
   { path: "/settings", label: "Ajustes", icon: Settings },
 ];
+
+const tabs: Tab[] = featureCopilot
+  ? [
+      ...baseTabs.slice(0, 1),
+      { path: "/copilot", label: "Copilot", icon: Mic },
+      ...baseTabs.slice(1),
+    ]
+  : baseTabs;
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -27,7 +38,7 @@ export function MobileNav() {
               "flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors",
               active
                 ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             <Icon className="size-5" />

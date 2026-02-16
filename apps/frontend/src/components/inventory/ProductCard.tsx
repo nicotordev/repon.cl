@@ -67,7 +67,15 @@ function ProductCardSkeleton() {
   );
 }
 
-export function ProductCard({ product }: { product: Product }) {
+type ViewVariant = "grid" | "list";
+
+export function ProductCard({
+  product,
+  variant = "grid",
+}: {
+  product: Product;
+  variant?: ViewVariant;
+}) {
   const setSelectedId = useInventoryStore((s) => s.setSelectedId);
   const setEditProductId = useInventoryStore((s) => s.setEditProductId);
   const openSheet = useUIStore((s) => s.openSheet);
@@ -114,6 +122,8 @@ export function ProductCard({ product }: { product: Product }) {
     return <ProductCardSkeleton />;
   }
 
+  const isList = variant === "list";
+
   return (
     <>
       <Card
@@ -124,16 +134,21 @@ export function ProductCard({ product }: { product: Product }) {
           if (e.key === "Enter" || e.key === " ") handleAdjust();
         }}
         className={cn(
-          "group relative overflow-hidden rounded-3xl border-border/60 bg-card",
+          "group relative overflow-hidden border-border/60 bg-card",
           "transition-all duration-200",
-          "hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/5",
-          "active:translate-y-0 active:scale-[0.99]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-          "py-0",
+          isList
+            ? "flex flex-row rounded-2xl py-0"
+            : "rounded-3xl hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/5 active:translate-y-0 active:scale-[0.99] py-0",
         )}
       >
         {/* Media */}
-        <div className="relative h-36 w-full overflow-hidden">
+        <div
+          className={cn(
+            "relative overflow-hidden shrink-0",
+            isList ? "h-20 w-20" : "h-36 w-full",
+          )}
+        >
           {/* Fondo bonito incluso sin imagen */}
           <div className="absolute inset-0 bg-gradient-to-br from-foreground/90 via-foreground/80 to-foreground/70" />
 
@@ -147,19 +162,32 @@ export function ProductCard({ product }: { product: Product }) {
               priority={false}
             />
           ) : (
-            <div className="relative z-[1] flex h-full items-center justify-center">
-              <div className="flex items-center gap-2 rounded-2xl bg-background/10 px-4 py-2 backdrop-blur-md">
-                {/* Use PiPackage from react-icons */}
-                <PiPackage className="size-5 text-background/90" />
-                <span className="text-xs font-semibold text-background/90">
-                  Sin imagen
-                </span>
+            <div className="relative z-[1] flex h-full w-full items-center justify-center p-1">
+              <div
+                className={cn(
+                  "flex items-center justify-center rounded-xl bg-background/10 backdrop-blur-md",
+                  isList
+                    ? "size-full min-w-0 min-h-0"
+                    : "gap-2 rounded-2xl px-4 py-2",
+                )}
+              >
+                <PiPackage
+                  className={cn(
+                    "shrink-0 text-background/90",
+                    isList ? "size-6" : "size-5",
+                  )}
+                />
+                {!isList && (
+                  <span className="text-xs font-semibold text-background/90">
+                    Sin imagen
+                  </span>
+                )}
               </div>
             </div>
           )}
 
-          {/* Overlay por Sin Stock */}
-          {isOut && (
+          {/* Overlay Sin Stock solo en grid (en lista va en el contenido) */}
+          {isOut && !isList && (
             <div className="absolute right-2 bottom-2 z-[2] grid place-items-center">
               <Badge
                 variant="destructive"
@@ -171,7 +199,12 @@ export function ProductCard({ product }: { product: Product }) {
           )}
 
           {/* Acciones (aparecen al hover/focus) */}
-          <div className="absolute right-3 top-3 z-[3] opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+          <div
+            className={cn(
+              "absolute z-[3] opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100",
+              isList ? "right-1 top-1" : "right-3 top-3",
+            )}
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -179,14 +212,14 @@ export function ProductCard({ product }: { product: Product }) {
                   size="icon"
                   aria-label="Abrir acciones"
                   className={cn(
-                    "size-9 rounded-2xl bg-background/85 shadow-sm backdrop-blur-md",
+                    "bg-background/85 shadow-sm backdrop-blur-md",
                     "hover:bg-background",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    isList ? "size-7 rounded-xl" : "size-9 rounded-2xl",
                   )}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* lucide-react MoreHorizontal */}
-                  <MoreHorizontal className="size-5 text-muted-foreground" />
+                  <MoreHorizontal className={cn("text-muted-foreground", isList ? "size-4" : "size-5")} />
                 </Button>
               </DropdownMenuTrigger>
 
@@ -217,64 +250,118 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
 
         {/* Content */}
-        <CardContent className="p-3">
-          <div className="space-y-1">
-            <div className="flex items-start justify-between gap-3">
-              <h3 className="line-clamp-1 text-base font-extrabold leading-tight text-foreground capitalize">
-                {product.name}
-              </h3>
-            </div>
+        <CardContent
+          className={cn(
+            "p-3",
+            isList && "flex min-w-0 flex-1 flex-row items-center justify-between gap-3",
+          )}
+        >
+          {isList ? (
+            <>
+              <div className="min-w-0 flex-1">
+                <h3 className="line-clamp-1 text-sm font-extrabold leading-tight text-foreground capitalize">
+                  {product.name}
+                </h3>
+                {product.brand && (
+                  <p className="mt-0.5 line-clamp-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground capitalize">
+                    {product.brand}
+                  </p>
+                )}
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  {product.category && (
+                    <Badge
+                      variant="secondary"
+                      className="rounded-lg border-none bg-muted/50 px-2 py-0.5 text-[9px] font-bold text-muted-foreground"
+                    >
+                      {product.category}
+                    </Badge>
+                  )}
+                  {isOut && (
+                    <Badge
+                      variant="destructive"
+                      className="rounded-lg px-2 py-0.5 text-[9px] font-black uppercase tracking-tight"
+                    >
+                      Sin stock
+                    </Badge>
+                  )}
+                  {isLow && !isOut && (
+                    <Badge className="rounded-lg border-none bg-amber-500/10 px-2 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-400">
+                      Stock bajo
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <p className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                  {formatMoney(product.salePriceGross ?? 0)}
+                </p>
+                <div className="flex items-center gap-1.5 rounded-xl bg-muted/40 px-2.5 py-1">
+                  <span className={cn("size-1.5 rounded-full", stockDotClass)} />
+                  <span className="text-[11px] font-bold text-foreground/80">
+                    {stock}
+                    <span className="ml-0.5 text-[9px] font-semibold text-muted-foreground">
+                      {product.uom ?? "UNIT"}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="line-clamp-1 text-base font-extrabold leading-tight text-foreground capitalize">
+                    {product.name}
+                  </h3>
+                </div>
 
-            {product.brand ? (
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground capitalize">
-                {product.brand}
-              </p>
-            ) : (
-              <p className="text-[11px] font-medium text-muted-foreground/70">
-                &nbsp;
-              </p>
-            )}
-          </div>
+                {product.brand && (
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground capitalize">
+                    {product.brand}
+                  </p>
+                )}
+              </div>
 
-          <div className="mt-3 flex items-center justify-between">
-            <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-              {formatMoney(product.salePriceGross ?? 0)}
-            </p>
+              <div className="mt-3 flex items-center justify-between">
+                <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                  {formatMoney(product.salePriceGross ?? 0)}
+                </p>
 
-            <div className="flex items-center gap-2 rounded-2xl bg-muted/40 px-3 py-1.5">
-              <span className={cn("size-2 rounded-full", stockDotClass)} />
-              <span className="text-xs font-bold text-foreground/80">
-                {stock}
-                <span className="ml-1 text-[10px] font-semibold text-muted-foreground">
-                  {product.uom ?? "UNIT"}
-                </span>
-              </span>
-            </div>
-          </div>
+                <div className="flex items-center gap-2 rounded-2xl bg-muted/40 px-3 py-1.5">
+                  <span className={cn("size-2 rounded-full", stockDotClass)} />
+                  <span className="text-xs font-bold text-foreground/80">
+                    {stock}
+                    <span className="ml-1 text-[10px] font-semibold text-muted-foreground">
+                      {product.uom ?? "UNIT"}
+                    </span>
+                  </span>
+                </div>
+              </div>
 
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {product.category && (
-              <Badge
-                variant="secondary"
-                className="rounded-xl border-none bg-muted/50 px-2.5 py-1 text-[10px] font-bold text-muted-foreground"
-              >
-                {product.category}
-              </Badge>
-            )}
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {product.category && (
+                  <Badge
+                    variant="secondary"
+                    className="rounded-xl border-none bg-muted/50 px-2.5 py-1 text-[10px] font-bold text-muted-foreground"
+                  >
+                    {product.category}
+                  </Badge>
+                )}
 
-            {isLow && !isOut && (
-              <Badge className="rounded-xl border-none bg-amber-500/10 px-2.5 py-1 text-[10px] font-extrabold text-amber-700 dark:text-amber-400">
-                Stock bajo
-              </Badge>
-            )}
-          </div>
+                {isLow && !isOut && (
+                  <Badge className="rounded-xl border-none bg-amber-500/10 px-2.5 py-1 text-[10px] font-extrabold text-amber-700 dark:text-amber-400">
+                    Stock bajo
+                  </Badge>
+                )}
+              </div>
 
-          {/* Hint de acción */}
-          <div className="mt-4 flex items-center justify-center">
-            <p className="text-xs text-muted-foreground text-center">
-              Click para ajustar inventario
-            </p>
-          </div>
+              <div className="mt-4 flex items-center justify-center">
+                <p className="text-xs text-muted-foreground text-center">
+                  Click para ajustar inventario
+                </p>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

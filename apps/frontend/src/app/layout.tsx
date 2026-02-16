@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import { QueryProvider } from "@/src/components/providers/QueryProvider";
+import { OneSignalProvider } from "@/src/components/providers/OneSignalProvider";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 
@@ -30,7 +31,9 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ClerkProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <QueryProvider>{children}</QueryProvider>
+            <OneSignalProvider>
+              <QueryProvider>{children}</QueryProvider>
+            </OneSignalProvider>
           </ThemeProvider>
         </ClerkProvider>
       </body>
