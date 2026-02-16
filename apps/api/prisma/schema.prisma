@@ -137,9 +137,9 @@ model Store {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members   StoreMember[]
-  products  Product[]
-  suppliers Supplier[]
+  members       StoreMember[]
+  storeProducts StoreProduct[]
+  suppliers     Supplier[]
   customers Customer[]
 
   purchases      Purchase[]
@@ -177,34 +177,50 @@ model StoreMember {
   @@index([storeId])
 }
 
+// Producto en una tienda: catálogo de la tienda con datos por tienda (precio, imagen, etc.)
+model StoreProduct {
+  id        String @id @default(cuid())
+  storeId   String
+  productId String
+
+  // Precio de venta en esta tienda (bruto, CLP)
+  salePriceGross Int?
+
+  // IVA en esta tienda
+  vatRateBps  Int     @default(1900)
+  isVatExempt Boolean @default(false)
+
+  // Config de expiración (por tienda si aplica)
+  isPerishable         Boolean @default(false)
+  defaultShelfLifeDays Int?
+
+  // Imagen en esta tienda (URL)
+  imageUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, productId])
+  @@index([storeId])
+  @@index([productId])
+}
+
+// Catálogo global de productos (sin tienda; compartido entre tiendas)
 model Product {
-  id      String @id @default(cuid())
-  storeId String
+  id String @id @default(cuid())
 
   name     String
   brand    String?
   category String?
   uom      UnitOfMeasure @default(UNIT)
 
-  // Precio de venta "normal" (bruto, incluye IVA) en CLP por defecto.
-  // Puedes tener pricing avanzado después (listas, promos), pero esto cubre MVP.
-  salePriceGross Int?
-
-  // Si el producto está afecto a IVA (19%) o es exento
-  vatRateBps  Int     @default(1900) // 1900 = 19.00% en basis points
-  isVatExempt Boolean @default(false)
-
-  // Config de expiración
-  isPerishable         Boolean @default(false)
-  defaultShelfLifeDays Int?
-
-  // Imagen del producto (URL en R2 u otro storage)
-  imageUrl String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeProducts StoreProduct[]
 
   barcodes             ProductBarcode[]
   stockLots            StockLot[]
@@ -214,8 +230,7 @@ model Product {
   stockAllocations     StockAllocation[]
   inventoryAdjustments InventoryAdjustment[]
 
-  @@index([storeId])
-  @@index([storeId, name])
+  @@index([name])
 }
 
 model ProductBarcode {

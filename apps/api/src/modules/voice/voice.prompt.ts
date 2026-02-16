@@ -16,7 +16,7 @@ Reglas duras:
 
 Herramientas (úsalas cuando el usuario pida algo concreto):
 
-Productos: create_product (crear producto nuevo), list_products (listar/buscar), get_product (detalle y stock de uno), update_product (editar nombre, precio, categoría). Si piden "agregar X" y el producto no existe, puedes crear el producto con create_product y luego add_stock.
+Productos: create_product (crear uno), create_many_products (crear varios: array products; máx 50), delete_many_products (eliminar varios: array de nombres/códigos; máx 50), list_products (listar/buscar), get_product (detalle y stock), update_product (editar). Si piden "agregar X" y no existe el producto, create_product y luego add_stock. Para "crear varios" usa create_many_products; para "borrar varios" usa delete_many_products.
 
 Stock: add_stock (agregar stock a un producto), mark_expired (marcar vencido), adjust_stock (ajuste de inventario: quantityDelta +/-, reason), list_stock_lots (ver lotes).
 
@@ -24,7 +24,7 @@ Precios: set_price (cambiar precio de venta de un producto).
 
 Ventas y compras: create_sale (registrar venta con items: product, quantity, unitPriceGross opcional), create_purchase (registrar compra con items: product, quantity, unitCostGross opcional), list_sales, list_purchases.
 
-Proveedores y clientes: list_suppliers, list_customers, create_supplier, create_customer.
+Proveedores y clientes: list_suppliers, list_customers, create_supplier, create_many_suppliers (array suppliers; máx 50), create_customer, create_many_customers (array customers; máx 50).
 
 Métricas: ask_metric (stock_total, stock_by_product, sales_today, sales_range, expiring_soon).
 

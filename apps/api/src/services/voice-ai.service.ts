@@ -1,7 +1,7 @@
-import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
 import { generateText, stepCountIs, streamText } from "ai";
 import type { StreamTextResult } from "ai";
-import { GEMINI_FLASH_LATEST } from "../app.config.js";
+import { OPENAI_MODEL } from "../app.config.js";
 import { buildVoiceTools } from "../lib/ai/tools.ai.js";
 import {
   buildSystemPrompt,
@@ -45,9 +45,7 @@ function resolveMaxSteps(userText: string): number {
   const isSimpleProductIntent =
     isSimple && hasSimpleVerb && !hasComplexIntent && !hasChainedIntent;
 
-  return isSimpleProductIntent
-    ? MAX_STEPS_SIMPLE_PRODUCT
-    : MAX_STEPS_DEFAULT;
+  return isSimpleProductIntent ? MAX_STEPS_SIMPLE_PRODUCT : MAX_STEPS_DEFAULT;
 }
 
 export async function runVoiceTurn(args: {
@@ -66,7 +64,7 @@ export async function runVoiceTurn(args: {
 
   try {
     const result = await generateText({
-      model: google(GEMINI_FLASH_LATEST),
+      model: openai(OPENAI_MODEL),
       system,
       prompt,
       tools: buildVoiceTools(args.storeId),
@@ -105,7 +103,14 @@ export async function runVoiceTurn(args: {
 
 /** Extract tool invocations from streamText steps for logging. */
 export function getToolInvocationsFromSteps(
-  steps: Array<{ toolCalls?: Array<{ toolCallId: string; toolName: string; input: unknown }>; toolResults?: Array<{ toolCallId: string; toolName: string; output: unknown }> }>,
+  steps: Array<{
+    toolCalls?: Array<{ toolCallId: string; toolName: string; input: unknown }>;
+    toolResults?: Array<{
+      toolCallId: string;
+      toolName: string;
+      output: unknown;
+    }>;
+  }>,
 ): VoiceToolInvocation[] {
   const out: VoiceToolInvocation[] = [];
   for (const step of steps) {
@@ -142,7 +147,7 @@ export function createVoiceStream(args: {
   const maxSteps = resolveMaxSteps(args.userText);
 
   return streamText({
-    model: google(GEMINI_FLASH_LATEST),
+    model: openai(OPENAI_MODEL),
     system,
     prompt,
     tools: buildVoiceTools(args.storeId),

@@ -1,7 +1,7 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { User } from "./lib/backend";
 
 const isPublicRoute = createRouteMatcher([
@@ -10,23 +10,22 @@ const isPublicRoute = createRouteMatcher([
   "/auth/sign-in(.*)",
 ]);
 
-export default clerkMiddleware(async (auth, request) => {
-  if (isPublicRoute(request)) {
+export default clerkMiddleware(async (auth, req) => {
+  if (isPublicRoute(req)) {
     return NextResponse.next();
   }
 
-  const loginUrl = new URL("/auth/sign-in", request.url).href;
+  // Use req.nextUrl.clone() for url manipulation
+  const loginUrl = req.nextUrl.clone();
+  loginUrl.pathname = "/auth/sign-in";
+  loginUrl.search = "";
+  loginUrl.hash = "";
+
   await auth.protect({
-    unauthenticatedUrl: loginUrl,
+    unauthenticatedUrl: loginUrl.href,
   });
 
-  const pathname = new URL(request.url).pathname;
-
-  // API/trpc routes: no redirects, no user fetch. Handlers use getToken() and return JSON (e.g. 401).
-  if (pathname.startsWith("/api") || pathname.startsWith("/trpc")) {
-    return NextResponse.next();
-  }
-
+  const pathname = req.nextUrl.pathname;
   // Prevent infinite loop: don't refetch user info if already on onboarding or login
   if (
     pathname.startsWith("/onboarding") ||
@@ -36,19 +35,13 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   // cookies() is not async
-  const cookiesStore = await cookies();
-
-  const cookieHeader = Array.from(cookiesStore.getAll())
-    .map(
-      ({ name, value }: { name: string; value: string }) => `${name}=${value}`,
-    )
-    .join("; ");
+  const headersStore = await headers();
 
   const userResponse = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user`,
     {
       headers: {
-        Cookie: cookieHeader,
+        Cookie: headersStore.get("Cookie") ?? "",
       },
     },
   );
@@ -63,7 +56,11 @@ export default clerkMiddleware(async (auth, request) => {
 
   // If onboarding not complete, and not already on onboarding page, redirect once
   if (user && user.onboardingCompleted === null) {
-    return NextResponse.redirect(new URL("/onboarding", request.url));
+    const onboardingUrl = req.nextUrl.clone();
+    onboardingUrl.pathname = "/onboarding";
+    onboardingUrl.search = "";
+    onboardingUrl.hash = "";
+    return NextResponse.redirect(onboardingUrl);
   }
 
   return NextResponse.next();

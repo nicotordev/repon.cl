@@ -1,6 +1,6 @@
 "use client";
 
-import { SignIn } from "@clerk/nextjs";   
+import { SignIn } from "@clerk/nextjs";
 
 export function LoginPageClient() {
   return (
@@ -9,3 +9,4 @@ export function LoginPageClient() {
     </div>
   );
 }
+  

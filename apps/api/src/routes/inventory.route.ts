@@ -65,7 +65,8 @@ app.delete("/:id", async (c) => {
   const productId = c.req.param("id");
 
   try {
-    await inventoryService.deleteProduct(store.id, productId);
+    const deleted = await inventoryService.deleteProduct(store.id, productId);
+    if (deleted === null) return c.json({ error: "Product not found" }, 404);
     return c.json({ ok: true });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError) {
@@ -175,11 +176,12 @@ app.post("/:id/image", async (c) => {
   }
 
   const productId = c.req.param("id");
-  const product = await prisma.product.findFirst({
-    where: { id: productId, storeId: store.id },
-    select: { id: true, imageUrl: true },
+  const sp = await prisma.storeProduct.findFirst({
+    where: { productId, storeId: store.id },
+    select: { productId: true, imageUrl: true },
   });
-  if (!product) return c.json({ error: "Product not found" }, 404);
+  if (!sp) return c.json({ error: "Product not found" }, 404);
+  const product = { id: sp.productId, imageUrl: sp.imageUrl };
 
   let body: Record<string, unknown>;
   try {
@@ -259,14 +261,14 @@ app.delete("/:id/image", async (c) => {
   if (!store) return c.json({ error: "Unauthorized or store not found" }, 401);
 
   const productId = c.req.param("id");
-  const product = await prisma.product.findFirst({
-    where: { id: productId, storeId: store.id },
-    select: { id: true, imageUrl: true },
+  const sp = await prisma.storeProduct.findFirst({
+    where: { productId, storeId: store.id },
+    select: { productId: true, imageUrl: true },
   });
-  if (!product) return c.json({ error: "Product not found" }, 404);
+  if (!sp) return c.json({ error: "Product not found" }, 404);
 
-  if (product.imageUrl) {
-    await deleteByPublicUrl(product.imageUrl);
+  if (sp.imageUrl) {
+    await deleteByPublicUrl(sp.imageUrl);
   }
 
   await inventoryService.updateProduct(store.id, productId, { imageUrl: null });

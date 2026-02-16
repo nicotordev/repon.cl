@@ -6,10 +6,14 @@ import {
   AskMetricParamsSchema,
   CreateCustomerParamsSchema,
   CreateProductAlertParamsSchema,
+  CreateManyCustomersParamsSchema,
+  CreateManyProductsParamsSchema,
+  CreateManySuppliersParamsSchema,
   CreateProductParamsSchema,
   CreatePurchaseParamsSchema,
   CreateSaleParamsSchema,
   CreateSupplierParamsSchema,
+  DeleteManyProductsParamsSchema,
   GetProductParamsSchema,
   ListCustomersParamsSchema,
   ListProductsParamsSchema,
@@ -24,11 +28,15 @@ import {
   executeAdjustStock,
   executeAskMetric,
   executeCreateCustomer,
+  executeCreateManyCustomers,
+  executeCreateManyProducts,
+  executeCreateManySuppliers,
   executeCreateProduct,
   executeCreateProductAlert,
   executeCreatePurchase,
   executeCreateSale,
   executeCreateSupplier,
+  executeDeleteManyProducts,
   executeGetProduct,
   executeListCustomers,
   executeListProducts,
@@ -82,6 +90,18 @@ export function buildVoiceTools(storeId: string): ToolSet {
         "Crea un producto nuevo en la tienda. name obligatorio. Opcional: salePriceGross, category, brand, uom (UNIT, GRAM, KILOGRAM, MILLILITER, LITER).",
       inputSchema: CreateProductParamsSchema,
       execute: (p) => run(() => executeCreateProduct(storeId, p)),
+    }),
+    create_many_products: tool({
+      description:
+        "Crea varios productos a la vez. products: array de objetos con name obligatorio y opcional salePriceGross, category, brand, uom. Máximo 50 productos por llamada.",
+      inputSchema: CreateManyProductsParamsSchema,
+      execute: (p) => run(() => executeCreateManyProducts(storeId, p)),
+    }),
+    delete_many_products: tool({
+      description:
+        "Elimina varios productos. products: array de nombres o códigos de producto (máx 50). Los no encontrados se reportan.",
+      inputSchema: DeleteManyProductsParamsSchema,
+      execute: (p) => run(() => executeDeleteManyProducts(storeId, p)),
     }),
     list_products: tool({
       description:
@@ -151,11 +171,23 @@ export function buildVoiceTools(storeId: string): ToolSet {
       inputSchema: CreateSupplierParamsSchema,
       execute: (p) => run(() => executeCreateSupplier(storeId, p)),
     }),
+    create_many_suppliers: tool({
+      description:
+        "Crea varios proveedores. suppliers: array de { name, rut?, phone?, email? }. Máx 50.",
+      inputSchema: CreateManySuppliersParamsSchema,
+      execute: (p) => run(() => executeCreateManySuppliers(storeId, p)),
+    }),
     create_customer: tool({
       description:
         "Crea un cliente. name obligatorio. Opcional: rut, phone, email.",
       inputSchema: CreateCustomerParamsSchema,
       execute: (p) => run(() => executeCreateCustomer(storeId, p)),
+    }),
+    create_many_customers: tool({
+      description:
+        "Crea varios clientes. customers: array de { name, rut?, phone?, email? }. Máx 50.",
+      inputSchema: CreateManyCustomersParamsSchema,
+      execute: (p) => run(() => executeCreateManyCustomers(storeId, p)),
     }),
     create_product_alert: tool({
       description:

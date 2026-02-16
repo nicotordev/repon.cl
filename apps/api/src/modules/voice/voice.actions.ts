@@ -62,6 +62,23 @@ export const CreateProductParamsSchema = z.object({
 });
 export type CreateProductParams = z.infer<typeof CreateProductParamsSchema>;
 
+export const CreateManyProductsParamsSchema = z.object({
+  products: z
+    .array(CreateProductParamsSchema)
+    .min(1)
+    .max(50),
+});
+export type CreateManyProductsParams = z.infer<
+  typeof CreateManyProductsParamsSchema
+>;
+
+export const DeleteManyProductsParamsSchema = z.object({
+  products: z.array(z.string().min(1)).min(1).max(50),
+});
+export type DeleteManyProductsParams = z.infer<
+  typeof DeleteManyProductsParamsSchema
+>;
+
 export const ListProductsParamsSchema = z.object({
   query: z.string().optional(),
   limit: z.number().int().min(1).max(100).optional(),
@@ -168,6 +185,20 @@ export const CreateCustomerParamsSchema = z.object({
 });
 export type CreateCustomerParams = z.infer<typeof CreateCustomerParamsSchema>;
 
+export const CreateManySuppliersParamsSchema = z.object({
+  suppliers: z.array(CreateSupplierParamsSchema).min(1).max(50),
+});
+export type CreateManySuppliersParams = z.infer<
+  typeof CreateManySuppliersParamsSchema
+>;
+
+export const CreateManyCustomersParamsSchema = z.object({
+  customers: z.array(CreateCustomerParamsSchema).min(1).max(50),
+});
+export type CreateManyCustomersParams = z.infer<
+  typeof CreateManyCustomersParamsSchema
+>;
+
 export const CreateProductAlertParamsSchema = z.object({
   product: z.string().min(1),
   type: z.string().min(1),
@@ -185,21 +216,18 @@ async function findProductByNameOrBarcode(storeId: string, query: string) {
   const q = query.trim();
   if (q.length === 0) return null;
 
-  // Fast path: exact matches first; only run contains if needed.
   const byBarcode = await prisma.productBarcode.findFirst({
     where: {
       code: q,
-      product: { storeId },
+      product: { storeProducts: { some: { storeId } } },
     },
-    include: {
-      product: true,
-    },
+    include: { product: true },
   });
   if (byBarcode?.product) return byBarcode.product;
 
   const byName = await prisma.product.findFirst({
     where: {
-      storeId,
+      storeProducts: { some: { storeId } },
       name: { equals: q, mode: "insensitive" },
     },
   });
@@ -207,7 +235,7 @@ async function findProductByNameOrBarcode(storeId: string, query: string) {
 
   const byContains = await prisma.product.findFirst({
     where: {
-      storeId,
+      storeProducts: { some: { storeId } },
       name: { contains: q, mode: "insensitive" },
     },
     orderBy: { updatedAt: "desc" },
@@ -260,8 +288,8 @@ export async function executeSetPrice(
     };
   }
 
-  await prisma.product.update({
-    where: { id: product.id },
+  await prisma.storeProduct.updateMany({
+    where: { storeId, productId: product.id },
     data: { salePriceGross: params.salePriceGross },
   });
 
@@ -507,18 +535,90 @@ export async function executeCreateProduct(
 ): Promise<ActionExecutionResult> {
   const product = await prisma.product.create({
     data: {
-      storeId,
       name: params.name.trim(),
-      salePriceGross: params.salePriceGross ?? null,
       category: params.category?.trim() || null,
       brand: params.brand?.trim() || null,
       uom: params.uom ?? UnitOfMeasure.UNIT,
+    },
+  });
+  await prisma.storeProduct.create({
+    data: {
+      storeId,
+      productId: product.id,
+      salePriceGross: params.salePriceGross ?? null,
     },
   });
   return {
     ok: true,
     message: `Producto "${product.name}" creado.`,
     data: { productId: product.id },
+  };
+}
+
+export async function executeCreateManyProducts(
+  storeId: string,
+  params: CreateManyProductsParams,
+): Promise<ActionExecutionResult> {
+  const created = await prisma.$transaction(async (tx) => {
+    const out: Array<{ id: string; name: string }> = [];
+    for (const p of params.products) {
+      const product = await tx.product.create({
+        data: {
+          name: p.name.trim(),
+          category: p.category?.trim() || null,
+          brand: p.brand?.trim() || null,
+          uom: p.uom ?? UnitOfMeasure.UNIT,
+        },
+      });
+      await tx.storeProduct.create({
+        data: {
+          storeId,
+          productId: product.id,
+          salePriceGross: p.salePriceGross ?? null,
+        },
+      });
+      out.push({ id: product.id, name: product.name });
+    }
+    return out;
+  });
+  const names = created.map((p) => p.name).join(", ");
+  return {
+    ok: true,
+    message: `Creados ${created.length} productos: ${names}.`,
+    data: { count: created.length, productIds: created.map((p) => p.id) },
+  };
+}
+
+export async function executeDeleteManyProducts(
+  storeId: string,
+  params: DeleteManyProductsParams,
+): Promise<ActionExecutionResult> {
+  const inventoryService = (await import("../../services/inventory.service.js"))
+    .default;
+  const productIds: string[] = [];
+  const notFound: string[] = [];
+  for (const q of params.products) {
+    const product = await findProductByNameOrBarcode(storeId, q.trim());
+    if (product) productIds.push(product.id);
+    else notFound.push(q);
+  }
+  if (productIds.length === 0) {
+    return {
+      ok: false,
+      message: notFound.length
+        ? `No encontré ningún producto: ${notFound.join(", ")}.`
+        : "No hay productos válidos para eliminar.",
+    };
+  }
+  const { count } = await inventoryService.deleteManyProducts(storeId, productIds);
+  const msg =
+    notFound.length > 0
+      ? `Eliminados ${count} productos. No encontrados: ${notFound.join(", ")}.`
+      : `Eliminados ${count} productos.`;
+  return {
+    ok: true,
+    message: msg,
+    data: { count, notFound: notFound.length > 0 ? notFound : undefined },
   };
 }
 
@@ -529,25 +629,27 @@ export async function executeListProducts(
   const limit = params.limit ?? 20;
   const where = { storeId } as {
     storeId: string;
-    name?: { contains: string; mode: "insensitive" };
+    product?: { name: { contains: string; mode: "insensitive" } };
   };
   if (params.query?.trim()) {
-    where.name = { contains: params.query.trim(), mode: "insensitive" };
+    where.product = {
+      name: { contains: params.query.trim(), mode: "insensitive" },
+    };
   }
-  const products = await prisma.product.findMany({
+  const rows = await prisma.storeProduct.findMany({
     where,
-    select: { id: true, name: true, salePriceGross: true, category: true },
-    orderBy: { name: "asc" },
+    include: { product: { select: { id: true, name: true, category: true } } },
+    orderBy: { product: { name: "asc" } },
     take: limit,
   });
-  const lines = products.map(
-    (p) =>
-      `• ${p.name}${p.salePriceGross != null ? ` $${p.salePriceGross}` : ""}`,
+  const lines = rows.map(
+    (sp) =>
+      `• ${sp.product.name}${sp.salePriceGross != null ? ` $${sp.salePriceGross}` : ""}`,
   );
   return {
     ok: true,
     message: lines.length ? lines.join("\n") : "No hay productos.",
-    data: { count: products.length },
+    data: { count: rows.length },
   };
 }
 
@@ -562,6 +664,10 @@ export async function executeGetProduct(
       message: `No encontré el producto "${params.product}".`,
     };
   }
+  const sp = await prisma.storeProduct.findFirst({
+    where: { storeId, productId: product.id },
+    select: { salePriceGross: true },
+  });
   const lots = await prisma.stockLot.findMany({
     where: { storeId, productId: product.id },
     select: { quantityIn: true, quantityOut: true },
@@ -570,9 +676,10 @@ export async function executeGetProduct(
     (acc, l) => acc + (l.quantityIn - l.quantityOut),
     0,
   );
+  const price = sp?.salePriceGross ?? "—";
   return {
     ok: true,
-    message: `${product.name}: precio $${product.salePriceGross ?? "—"} CLP, stock ${stock} u.`,
+    message: `${product.name}: precio $${price} CLP, stock ${stock} u.`,
     data: { productId: product.id, stock },
   };
 }
@@ -588,19 +695,25 @@ export async function executeUpdateProduct(
       message: `No encontré el producto "${params.product}".`,
     };
   }
-  const data: {
+  const productData: {
     name?: string;
-    salePriceGross?: number | null;
     category?: string | null;
     brand?: string | null;
   } = {};
-  if (params.name != null) data.name = params.name.trim();
-  if (params.salePriceGross != null)
-    data.salePriceGross = params.salePriceGross;
+  if (params.name != null) productData.name = params.name.trim();
   if (params.category !== undefined)
-    data.category = params.category?.trim() || null;
-  if (params.brand !== undefined) data.brand = params.brand?.trim() || null;
-  await prisma.product.update({ where: { id: product.id }, data });
+    productData.category = params.category?.trim() || null;
+  if (params.brand !== undefined)
+    productData.brand = params.brand?.trim() || null;
+  if (Object.keys(productData).length > 0) {
+    await prisma.product.update({ where: { id: product.id }, data: productData });
+  }
+  if (params.salePriceGross != null) {
+    await prisma.storeProduct.updateMany({
+      where: { storeId, productId: product.id },
+      data: { salePriceGross: params.salePriceGross },
+    });
+  }
   return {
     ok: true,
     message: `Producto "${product.name}" actualizado.`,
@@ -810,7 +923,11 @@ export async function executeCreateSale(
         message: `Stock insuficiente de "${product.name}" (hay ${available}, pides ${item.quantity}).`,
       };
     }
-    const unitPrice = item.unitPriceGross ?? product.salePriceGross ?? 0;
+    const sp = await prisma.storeProduct.findFirst({
+      where: { storeId, productId: product.id },
+      select: { salePriceGross: true },
+    });
+    const unitPrice = item.unitPriceGross ?? sp?.salePriceGross ?? 0;
     totalGross += unitPrice * item.quantity;
     saleItems.push({
       productId: product.id,
@@ -1000,6 +1117,31 @@ export async function executeCreateSupplier(
   };
 }
 
+export async function executeCreateManySuppliers(
+  storeId: string,
+  params: CreateManySuppliersParams,
+): Promise<ActionExecutionResult> {
+  const created = await prisma.$transaction(
+    params.suppliers.map((s) =>
+      prisma.supplier.create({
+        data: {
+          storeId,
+          name: s.name.trim(),
+          rut: s.rut?.trim() || null,
+          phone: s.phone?.trim() || null,
+          email: s.email?.trim() || null,
+        },
+      }),
+    ),
+  );
+  const names = created.map((s) => s.name).join(", ");
+  return {
+    ok: true,
+    message: `Creados ${created.length} proveedores: ${names}.`,
+    data: { count: created.length, supplierIds: created.map((s) => s.id) },
+  };
+}
+
 export async function executeCreateCustomer(
   storeId: string,
   params: CreateCustomerParams,
@@ -1017,6 +1159,31 @@ export async function executeCreateCustomer(
     ok: true,
     message: `Cliente "${customer.name}" creado.`,
     data: { customerId: customer.id },
+  };
+}
+
+export async function executeCreateManyCustomers(
+  storeId: string,
+  params: CreateManyCustomersParams,
+): Promise<ActionExecutionResult> {
+  const created = await prisma.$transaction(
+    params.customers.map((c) =>
+      prisma.customer.create({
+        data: {
+          storeId,
+          name: c.name.trim(),
+          rut: c.rut?.trim() || null,
+          phone: c.phone?.trim() || null,
+          email: c.email?.trim() || null,
+        },
+      }),
+    ),
+  );
+  const names = created.map((c) => c.name).join(", ");
+  return {
+    ok: true,
+    message: `Creados ${created.length} clientes: ${names}.`,
+    data: { count: created.length, customerIds: created.map((c) => c.id) },
   };
 }
 

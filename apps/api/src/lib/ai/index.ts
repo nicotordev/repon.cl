@@ -1,7 +1,7 @@
 import type { LanguageModel } from "ai";
-import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
-import { GEMINI_FLASH_LATEST } from "../../app.config.js";
+import { OPENAI_MODEL } from "../../app.config.js";
 import { buildVoiceTools } from "./tools.ai.js";
 import { buildSystemPrompt } from "../../modules/voice/voice.prompt.js";
 
@@ -10,7 +10,7 @@ class ReponAI {
   private systemPrompt: string = buildSystemPrompt();
 
   constructor() {
-    this.model = google(GEMINI_FLASH_LATEST);
+    this.model = openai(OPENAI_MODEL);
   }
 
   /**
