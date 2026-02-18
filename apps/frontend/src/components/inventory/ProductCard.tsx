@@ -198,39 +198,34 @@ export function ProductCard({
             </div>
           )}
 
-          {/* Acciones (aparecen al hover/focus) */}
+          {/* Acciones: siempre visibles en móvil; en desktop al hover/focus */}
           <div
             className={cn(
-              "absolute z-[3] opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100",
-              isList ? "right-1 top-1" : "right-3 top-3",
+              "absolute z-3 opacity-100 transition-opacity",
+              isList ? "right-1 top-1" : "right-2 top-2 sm:right-3 sm:top-3",
             )}
           >
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  aria-label="Abrir acciones"
-                  className={cn(
-                    "bg-background/85 shadow-sm backdrop-blur-md",
-                    "hover:bg-background",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    isList ? "size-7 rounded-xl" : "size-9 rounded-2xl",
-                  )}
-                  onClick={(e) => e.stopPropagation()}
-                >
+              <Button
+                variant="secondary"
+                size="icon"
+                aria-label="Abrir acciones (Editar, Quitar)"
+                onClick={(e) => e.stopPropagation()}
+                asChild
+              >
+                <DropdownMenuTrigger>
                   <MoreHorizontal
                     className={cn(
-                      "text-muted-foreground",
                       isList ? "size-4" : "size-5",
                     )}
                   />
-                </Button>
-              </DropdownMenuTrigger>
-
+                </DropdownMenuTrigger>
+              </Button>
               <DropdownMenuContent
+                side="bottom"
                 align="end"
-                className="w-44 rounded-2xl p-2"
+                sideOffset={8}
+                className="w-48 rounded-2xl p-2 shadow-lg"
                 onClick={(e) => e.stopPropagation()}
               >
                 <DropdownMenuItem
@@ -395,7 +390,9 @@ export function ProductCard({
               onClick={handleConfirmRemove}
               className={cn(
                 "h-12 rounded-2xl bg-destructive font-black text-destructive-foreground hover:bg-destructive/90 active:scale-95",
-                removeFromStore.isPending ? "pointer-events-none opacity-60" : "",
+                removeFromStore.isPending
+                  ? "pointer-events-none opacity-60"
+                  : "",
               )}
               disabled={removeFromStore.isPending}
             >

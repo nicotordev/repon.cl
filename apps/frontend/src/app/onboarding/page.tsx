@@ -37,6 +37,7 @@ import {
   Upload,
   User,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
@@ -125,6 +126,7 @@ const CURRENCIES: { value: string; label: string }[] = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { theme: currentTheme, setTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -140,7 +142,6 @@ export default function OnboardingPage() {
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [locale, setLocale] = useState("es-CL");
-  const [theme, setTheme] = useState("system");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState("");
 
@@ -250,7 +251,7 @@ export default function OnboardingPage() {
       avatarUrl: avatarUrl.trim() || undefined,
       completeOnboarding: true,
       preferences: {
-        theme: theme || undefined,
+        theme: currentTheme || undefined,
         language: locale || undefined,
         notificationsEnabled,
       },
@@ -472,11 +473,26 @@ export default function OnboardingPage() {
                   </FieldLabel>
                   <FieldContent>
                     <Select
-                      value={step === "locale" ? locale : theme}
-                      onValueChange={step === "locale" ? setLocale : setTheme}
+                      value={
+                        step === "locale"
+                          ? locale || LOCALES[0]?.value
+                          : (currentTheme ?? THEMES[0]?.value)
+                      }
+                      onValueChange={
+                        step === "locale"
+                          ? setLocale
+                          : (value) =>
+                              setTheme(value as "light" | "dark" | "system")
+                      }
                     >
                       <SelectTrigger className="h-12 rounded-xl">
-                        <SelectValue />
+                        <SelectValue
+                          placeholder={
+                            step === "locale"
+                              ? LOCALES[0]?.label
+                              : THEMES[0]?.label
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {(step === "locale" ? LOCALES : THEMES).map((opt) => (

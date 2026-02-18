@@ -250,7 +250,7 @@ export function useVoiceRecording(options: UseVoiceRecordingOptions = {}) {
               }
             }
 
-            if (!streamFinished && fullMessage) {
+            if (!streamFinished) {
               transitionTo("RESPONDING", {
                 result: { transcript, response: fullMessage },
                 error: null,

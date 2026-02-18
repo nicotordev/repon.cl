@@ -5,6 +5,11 @@ import { OPENAI_MODEL } from "../../app.config.js";
 import { buildVoiceTools } from "./tools.ai.js";
 import { buildSystemPrompt } from "../../modules/voice/voice.prompt.js";
 
+const VOICE_MAX_STEPS = Math.max(
+  1,
+  Math.min(8, Number(process.env.VOICE_MAX_STEPS ?? 3) || 3),
+);
+
 class ReponAI {
   private model: LanguageModel;
   private systemPrompt: string = buildSystemPrompt();
@@ -15,7 +20,7 @@ class ReponAI {
 
   /**
    * @param prompt - User or system prompt.
-   * @param options.storeId - When set, voice action tools (add_stock, set_price, mark_expired, ask_metric) are available and the model can call them (maxSteps: 5).
+   * @param options.storeId - When set, voice action tools are available and the model can call them (maxSteps configurable with VOICE_MAX_STEPS, default 3).
    */
   async generateText(
     prompt: string,
@@ -28,7 +33,7 @@ class ReponAI {
       model: this.model,
       prompt,
       system: this.systemPrompt,
-      ...(tools && { tools, maxSteps: 5 }),
+      ...(tools && { tools, maxSteps: VOICE_MAX_STEPS }),
     });
     return result.text ?? "";
   }

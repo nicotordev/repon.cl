@@ -41,6 +41,7 @@ export interface CatalogProductRow {
   name: string;
   brand: string | null;
   category: string | null;
+  imageUrl: string | null;
   uom: string;
 }
 
@@ -116,6 +117,7 @@ const inventoryService = {
         name: true,
         brand: true,
         category: true,
+        imageUrl: true,
         uom: true,
       },
       orderBy: { name: "asc" },
@@ -127,20 +129,43 @@ const inventoryService = {
   async getProducts(storeId: string) {
     const rows = await prisma.storeProduct.findMany({
       where: { storeId },
-      include: {
-        product: {
-          include: {
-            barcodes: { select: { code: true } },
-            stockLots: {
-              where: { storeId },
-              select: { quantityIn: true, quantityOut: true },
-            },
-          },
-        },
+      select: {
+        productId: true,
+        salePriceGross: true,
+        imageUrl: true,
       },
       orderBy: { product: { name: "asc" } },
     });
-    return rows.map((sp) => mapStoreProductToRow(sp));
+    if (rows.length === 0) return [];
+
+    const products = await prisma.product.findMany({
+      where: { id: { in: rows.map((row) => row.productId) } },
+      select: {
+        id: true,
+        name: true,
+        brand: true,
+        category: true,
+        uom: true,
+        barcodes: { select: { code: true } },
+        stockLots: {
+          where: { storeId },
+          select: { quantityIn: true, quantityOut: true },
+        },
+      },
+    });
+
+    const productsById = new Map(products.map((product) => [product.id, product]));
+    return rows
+      .map((sp) => {
+        const product = productsById.get(sp.productId);
+        if (!product) return null;
+        return mapStoreProductToRow({
+          product,
+          salePriceGross: sp.salePriceGross,
+          imageUrl: sp.imageUrl,
+        });
+      })
+      .filter((row): row is ReturnType<typeof mapStoreProductToRow> => row !== null);
   },
 
   async searchProducts(storeId: string, query: string) {
@@ -157,20 +182,43 @@ const inventoryService = {
           ],
         },
       },
-      include: {
-        product: {
-          include: {
-            barcodes: { select: { code: true } },
-            stockLots: {
-              where: { storeId },
-              select: { quantityIn: true, quantityOut: true },
-            },
-          },
-        },
+      select: {
+        productId: true,
+        salePriceGross: true,
+        imageUrl: true,
       },
       orderBy: { product: { name: "asc" } },
     });
-    return rows.map((sp) => mapStoreProductToRow(sp));
+    if (rows.length === 0) return [];
+
+    const products = await prisma.product.findMany({
+      where: { id: { in: rows.map((row) => row.productId) } },
+      select: {
+        id: true,
+        name: true,
+        brand: true,
+        category: true,
+        uom: true,
+        barcodes: { select: { code: true } },
+        stockLots: {
+          where: { storeId },
+          select: { quantityIn: true, quantityOut: true },
+        },
+      },
+    });
+
+    const productsById = new Map(products.map((product) => [product.id, product]));
+    return rows
+      .map((sp) => {
+        const product = productsById.get(sp.productId);
+        if (!product) return null;
+        return mapStoreProductToRow({
+          product,
+          salePriceGross: sp.salePriceGross,
+          imageUrl: sp.imageUrl,
+        });
+      })
+      .filter((row): row is ReturnType<typeof mapStoreProductToRow> => row !== null);
   },
 
   async getLots(storeId: string) {
@@ -290,7 +338,7 @@ const inventoryService = {
     const { productId, ...rest } = data;
     const product = await prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true },
+      select: { id: true, imageUrl: true },
     });
     if (!product) throw new Error("Product not found");
 
@@ -304,6 +352,7 @@ const inventoryService = {
         data: {
           storeId,
           productId,
+          imageUrl: product.imageUrl,
           salePriceGross: rest.salePriceGross,
           isPerishable: rest.isPerishable ?? false,
           defaultShelfLifeDays: rest.defaultShelfLifeDays,

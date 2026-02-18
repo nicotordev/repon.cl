@@ -177,7 +177,7 @@ model StoreMember {
   @@index([storeId])
 }
 
-// Producto en una tienda: catálogo de la tienda con datos por tienda (precio, imagen, etc.)
+// Producto adoptado por una tienda: precio, expiración, imagen por tienda (opcional; puede heredar Product.imageUrl)
 model StoreProduct {
   id        String @id @default(cuid())
   storeId   String
@@ -208,13 +208,14 @@ model StoreProduct {
   @@index([productId])
 }
 
-// Catálogo global de productos (sin tienda; compartido entre tiendas)
+// Catálogo global mínimo: barcode (ProductBarcode), name, category, imageUrl. Cada tienda lo "adopta" (StoreProduct) con precio/expiración/etc.
 model Product {
   id String @id @default(cuid())
 
   name     String
   brand    String?
   category String?
+  imageUrl String? // imagen global (OFF, etc.); StoreProduct puede sobreescribir por tienda
   uom      UnitOfMeasure @default(UNIT)
 
   createdAt DateTime @default(now())
@@ -231,20 +232,19 @@ model Product {
   inventoryAdjustments InventoryAdjustment[]
 
   @@index([name])
+  @@index([category])
 }
 
+// Barcode global (EAN/UPC); único para evitar duplicados en el catálogo
 model ProductBarcode {
   id        String @id @default(cuid())
   productId String
-
-  // EAN/UPC u otro
-  code String
+  code      String @unique
 
   createdAt DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@unique([productId, code])
   @@index([code])
 }
 

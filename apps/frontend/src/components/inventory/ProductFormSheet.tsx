@@ -237,6 +237,7 @@ export function ProductFormSheet({ products }: Props) {
 
   const canGoNext = () => {
     if (step === 1) {
+      if (isEdit) return name.trim().length > 0;
       if (createMode === "new") return name.trim().length > 0;
       if (createMode === "existing") return !!selectedCatalogProduct;
       return false;

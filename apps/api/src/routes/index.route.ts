@@ -4,6 +4,8 @@ import chatRoute from "./chat.route.js";
 import userRoute from "./user.route.js";
 import inventoryRoute from "./inventory.route.js";
 import alertsRoute from "./alerts.route.js";
+import catalogRoute from "./catalog.route.js";
+import internalRoute from "./internal.route.js";
 
 const app = new Hono();
 
@@ -14,5 +16,7 @@ app.route("/chat", chatRoute);
 app.route("/user", userRoute);
 app.route("/inventory", inventoryRoute);
 app.route("/alerts", alertsRoute);
+app.route("/catalog", catalogRoute);
+app.route("/internal", internalRoute);
 
 export default app;

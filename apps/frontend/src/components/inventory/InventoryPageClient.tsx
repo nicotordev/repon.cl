@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ProductCard } from "@/components/inventory/ProductCard";
 import { ProductFormSheet } from "@/components/inventory/ProductFormSheet";
 import { StockAdjustSheet } from "@/components/inventory/StockAdjustSheet";
+import { InventoryFiltersSheet } from "@/components/inventory/InventoryFiltersSheet";
 import { BarcodeScannerSheet } from "@/components/pos/BarcodeScannerSheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -107,35 +108,40 @@ export function InventoryPageClient({ initialProducts }: Props) {
   const activeFiltersCount = Object.values(filters).filter(Boolean).length;
 
   return (
-    <div className="flex flex-col gap-6 p-4 pb-20 sm:p-6">
+    <div className="flex min-h-0 flex-col gap-6 p-4 pb-24 sm:p-6">
       {/* Header de Acciones */}
-      <div className="sticky top-0 z-10 flex items-center justify-between bg-background/95 py-2 backdrop-blur supports-backdrop-filter:bg-background/60">
-        <div className="flex justify-between items-center gap-2 w-full">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-            {filteredProducts.length}{" "}
-            {filteredProducts.length === 1 ? "Producto" : "Productos"}
-          </h2>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="default"
-              onClick={openNewProduct}
-              className="rounded-xl bg-primary text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-95"
+      <div className="sticky top-0 z-10 -mx-4 flex shrink-0 items-center justify-between gap-2 bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/60 sm:mx-0 sm:px-0">
+        <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          {filteredProducts.length}{" "}
+          {filteredProducts.length === 1 ? "Producto" : "Productos"}
+        </h2>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="default"
+            onClick={openNewProduct}
+            className="h-10 min-h-10 min-w-[44px] touch-manipulation rounded-xl bg-primary px-4 text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-95"
+            aria-label="Nuevo producto"
+          >
+            <Plus className="mr-2 size-4" />
+            Nuevo
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 min-h-[44px] min-w-[44px] touch-manipulation rounded-xl border-border"
+                aria-label="Más opciones"
+              >
+                <MoreVertical className="size-5 text-primary" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="bottom"
+              align="end"
+              sideOffset={6}
+              className="w-52 rounded-xl p-1 shadow-lg"
             >
-              <Plus className="mr-2 size-4" />
-              Nuevo
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="rounded-xl border-border"
-                  aria-label="Más opciones"
-                >
-                  <MoreVertical className="size-5 text-primary" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 rounded-xl p-1">
                 <DropdownMenuRadioGroup
                   value={viewMode}
                   onValueChange={(v) => setViewMode(v as "grid" | "list")}
@@ -169,9 +175,8 @@ export function InventoryPageClient({ initialProducts }: Props) {
                     </span>
                   )}
                 </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -211,6 +216,7 @@ export function InventoryPageClient({ initialProducts }: Props) {
       )}
 
       {/* Overlays / Sheets */}
+      <InventoryFiltersSheet products={products} />
       <StockAdjustSheet products={products} />
       <ProductFormSheet products={products} />
       <BarcodeScannerSheet

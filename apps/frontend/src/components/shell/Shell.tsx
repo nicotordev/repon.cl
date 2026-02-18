@@ -4,6 +4,7 @@ import { CopilotPanel } from "@/components/copilot/CopilotPanel";
 import { OfflineBanner } from "@/components/offline/OfflineBanner";
 import { PendingQueueSheet } from "@/components/offline/PendingQueueSheet";
 import { ConversationProvider } from "@/contexts/ConversationContext";
+import { StoreProvider } from "@/contexts/StoreContext";
 import { featureCopilot, featureOffline } from "@/lib/env";
 import { useUIStore } from "@/store/ui.store";
 import { usePathname } from "next/navigation";
@@ -22,10 +23,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ConversationProvider onOpenChat={handleOpenChat}>
+    <StoreProvider>
+      <ConversationProvider onOpenChat={handleOpenChat}>
       <div className="flex min-h-dvh flex-col bg-background">
         <Topbar />
-        <main className="flex-1 overflow-auto pb-20">
+        <main className="flex-1 overflow-auto pb-20 pt-10">
           {featureOffline && <OfflineBanner />}
           {children}
         </main>
@@ -34,5 +36,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {featureCopilot && <CopilotPanel />}
       </div>
     </ConversationProvider>
+    </StoreProvider>
   );
 }

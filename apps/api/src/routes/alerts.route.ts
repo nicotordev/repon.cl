@@ -13,7 +13,7 @@ async function getStore(c: any) {
   if (!session || !session.userId) return null;
   const user = await resolveUserByClerkId(session.userId);
   if (!user) return null;
-  const storeId = c.req.header("x-store-id");
+  const storeId = c.req.query("storeId");
   return await resolveStoreForUser(user, storeId || null);
 }
 

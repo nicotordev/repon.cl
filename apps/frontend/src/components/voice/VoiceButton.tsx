@@ -3,10 +3,11 @@
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useConversationOptional } from "@/contexts/ConversationContext";
+import { useTts } from "@/hooks/use-tts";
 import { useVoiceRecording } from "@/hooks/use-voice-recording";
 import { cn } from "@/lib/utils";
 import type { VoiceState } from "@/lib/voice-types";
-import { MicIcon, SquareIcon } from "lucide-react";
+import { Bot, Loader2, Mic, Square, User, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 
 function stateLabel(state: VoiceState): string {
@@ -39,10 +40,10 @@ export function VoiceButton({ className }: { className?: string }) {
     stopRecording,
     reset,
   } = useVoiceRecording();
+  const { play: playTts, isLoading: ttsLoading, isPlaying: ttsPlaying } = useTts();
 
   const lastResultRef = useRef<typeof result>(null);
 
-  // When we get a voice result, add it to the conversation and open the chat
   useEffect(() => {
     if (!result || !conversation) return;
     if (result === lastResultRef.current) return;
@@ -86,87 +87,131 @@ export function VoiceButton({ className }: { className?: string }) {
   const isProcessing = state === "PROCESSING";
   const isRecording = state === "RECORDING";
   const isError = state === "ERROR";
+  const hasStreaming =
+    streamingTranscript || streamingResponse || streamingThought;
+  const hasResult = result && (result.transcript || result.response);
 
   return (
     <div className={cn("flex flex-col items-center gap-3", className)}>
-      <Button
-        type="button"
-        variant={isError ? "destructive" : "default"}
-        size="lg"
-        className={cn(
-          "touch-none select-none rounded-full size-14 transition-all",
-          isRecording &&
-            "scale-110 bg-destructive text-primary-foreground hover:bg-destructive/90",
-        )}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onTouchStart={(e) => {
-          e.preventDefault();
-          if (state === "IDLE" || state === "ERROR") startRecording();
-        }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          if (state === "RECORDING") stopRecording();
-        }}
-        disabled={isProcessing}
-        aria-label={stateLabel(state)}
-        aria-busy={isProcessing}
-      >
-        {isProcessing ? (
-          <Spinner className="size-6" />
-        ) : isRecording ? (
-          <SquareIcon className="size-6 fill-current" />
-        ) : (
-          <MicIcon className="size-6" />
-        )}
-      </Button>
+      {/* Streaming / current turn bubbles */}
+      {(hasStreaming || hasResult) && (
+        <div className="w-full space-y-2">
+          {(streamingTranscript ?? result?.transcript) && (
+            <div className="flex gap-2 justify-end">
+              <div className="chat-bubble-enter max-w-[85%] rounded-2xl rounded-tr-md bg-primary px-4 py-2.5 text-sm text-primary-foreground shadow-sm">
+                <span className="text-primary-foreground/80 text-xs font-medium">
+                  Tú
+                </span>
+                <p className="whitespace-pre-wrap break-words">
+                  {streamingTranscript ?? result?.transcript}
+                </p>
+              </div>
+              <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs">
+                <User className="size-4" />
+              </div>
+            </div>
+          )}
+          {(streamingResponse ?? result?.response) && (
+            <div className="flex gap-2">
+              <div className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs">
+                <Bot className="size-4" />
+              </div>
+              <div className="flex max-w-[85%] flex-col gap-1 rounded-2xl rounded-tl-md bg-muted/80 px-4 py-2.5 text-sm text-foreground shadow-sm">
+                <span className="text-muted-foreground text-xs font-medium">
+                  Copilot
+                </span>
+                <p className="whitespace-pre-wrap break-words">
+                  {streamingResponse ?? result?.response}
+                  {state === "PROCESSING" && streamingResponse && (
+                    <span className="typing-cursor" aria-hidden />
+                  )}
+                </p>
+                {result?.response?.trim() && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground -ml-1 h-7 w-7 p-0"
+                    onClick={() => playTts(result.response)}
+                    disabled={ttsLoading}
+                    aria-label={ttsPlaying ? "Reproduciendo" : "Escuchar respuesta"}
+                  >
+                    {ttsLoading ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Volume2 className="size-3.5" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          {streamingThought && (
+            <p className="text-muted-foreground flex items-center gap-2 text-xs italic">
+              <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" />
+              {streamingThought}
+            </p>
+          )}
+          {result && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground text-xs"
+              onClick={reset}
+            >
+              Nueva grabación
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Mic bar */}
+      <div className="flex w-full items-center justify-center gap-3">
+        <Button
+          type="button"
+          variant={isError ? "destructive" : "default"}
+          size="lg"
+          className={cn(
+            "touch-none select-none rounded-full transition-all duration-200",
+            "size-14 sm:size-16",
+            isRecording &&
+              "animate-mic-recording scale-110 bg-destructive text-primary-foreground hover:bg-destructive/90",
+            !isRecording &&
+              !isError &&
+              "animate-mic-pulse border-2 border-primary/30",
+          )}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            if (state === "IDLE" || state === "ERROR") startRecording();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            if (state === "RECORDING") stopRecording();
+          }}
+          disabled={isProcessing}
+          aria-label={stateLabel(state)}
+          aria-busy={isProcessing}
+        >
+          {isProcessing ? (
+            <Spinner className="size-6 sm:size-7" />
+          ) : isRecording ? (
+            <Square className="size-6 fill-current sm:size-7" />
+          ) : (
+            <Mic className="size-6 sm:size-7" />
+          )}
+        </Button>
+      </div>
       <span
         className={cn(
-          "text-sm text-muted-foreground",
+          "text-center text-sm text-muted-foreground",
           isError && "text-destructive",
         )}
         role="status"
       >
         {error ?? stateLabel(state)}
       </span>
-      {!conversation &&
-        (streamingTranscript ||
-          streamingResponse ||
-          (result && (result.transcript || result.response))) && (
-          <div className="w-full max-w-md space-y-2 rounded-lg border border-border bg-muted/50 p-3 text-sm">
-            {(streamingTranscript ?? result?.transcript) && (
-              <p>
-                <span className="font-medium text-muted-foreground">Tú: </span>
-                {streamingTranscript ?? result?.transcript}
-              </p>
-            )}
-            {(streamingResponse ?? result?.response) && (
-              <p>
-                <span className="font-medium text-muted-foreground">
-                  Respuesta:{" "}
-                </span>
-                {streamingResponse ?? result?.response}
-                {state === "PROCESSING" && streamingResponse && (
-                  <span
-                    className="inline-block w-2 h-4 ml-0.5 bg-muted-foreground/60 animate-pulse"
-                    aria-hidden
-                  />
-                )}
-              </p>
-            )}
-            {streamingThought && (
-              <p className="italic text-muted-foreground animate-pulse">
-                {streamingThought}
-              </p>
-            )}
-            {result && (
-              <Button variant="ghost" size="sm" onClick={reset}>
-                Nueva grabación
-              </Button>
-            )}
-          </div>
-        )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   isAcceptedImageType,
   getMaxFileBytes,
   deleteByPublicUrl,
+  R2UploadError,
 } from "../services/r2.service.js";
 import prisma from "../lib/prisma.js";
 import { Prisma } from "../lib/generated/prisma/client.js";
@@ -286,16 +287,24 @@ app.post("/:id/image", async (c) => {
   }
   const buffer = Buffer.from(arrayBuffer);
 
-  const imageUrl = await uploadProductImage({
-    storeId: store.id,
-    productId: product.id,
-    buffer,
-    contentType: type,
-    originalFilename: name,
-  });
-
-  if (!imageUrl) {
-    return c.json({ error: "Error al subir la imagen. Intenta de nuevo." }, 500);
+  let imageUrl: string;
+  try {
+    imageUrl = await uploadProductImage({
+      storeId: store.id,
+      productId: product.id,
+      buffer,
+      contentType: type,
+      originalFilename: name,
+    });
+  } catch (err) {
+    if (err instanceof R2UploadError) {
+      return c.json({ error: err.message, code: err.code }, err.status as 503 | 502);
+    }
+    console.error("[inventory.route] upload image failed:", err);
+    return c.json(
+      { error: "Error al subir la imagen. Intenta de nuevo." },
+      500,
+    );
   }
 
   // Opcional: borrar imagen anterior en R2 si era nuestra

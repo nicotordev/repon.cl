@@ -90,7 +90,7 @@ export function ProductQuickSearch() {
           <Button
             key={p.id}
             variant="outline"
-            className="h-auto flex-col items-stretch gap-0.5 p-3 text-left"
+            className="h-auto flex-col items-stretch gap-0.5 p-3 text-left bg-background"
             onClick={() =>
               addItem({
                 productId: p.id,

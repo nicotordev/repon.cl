@@ -63,10 +63,7 @@ export const CreateProductParamsSchema = z.object({
 export type CreateProductParams = z.infer<typeof CreateProductParamsSchema>;
 
 export const CreateManyProductsParamsSchema = z.object({
-  products: z
-    .array(CreateProductParamsSchema)
-    .min(1)
-    .max(50),
+  products: z.array(CreateProductParamsSchema).min(1).max(50),
 });
 export type CreateManyProductsParams = z.infer<
   typeof CreateManyProductsParamsSchema
@@ -216,21 +213,23 @@ async function findProductByNameOrBarcode(storeId: string, query: string) {
   const q = query.trim();
   if (q.length === 0) return null;
 
-  const byBarcode = await prisma.productBarcode.findFirst({
-    where: {
-      code: q,
-      product: { storeProducts: { some: { storeId } } },
-    },
-    include: { product: true },
-  });
-  if (byBarcode?.product) return byBarcode.product;
+  const [byBarcode, byName] = await Promise.all([
+    prisma.productBarcode.findFirst({
+      where: {
+        code: q,
+        product: { storeProducts: { some: { storeId } } },
+      },
+      include: { product: true },
+    }),
+    prisma.product.findFirst({
+      where: {
+        storeProducts: { some: { storeId } },
+        name: { equals: q, mode: "insensitive" },
+      },
+    }),
+  ]);
 
-  const byName = await prisma.product.findFirst({
-    where: {
-      storeProducts: { some: { storeId } },
-      name: { equals: q, mode: "insensitive" },
-    },
-  });
+  if (byBarcode?.product) return byBarcode.product;
   if (byName) return byName;
 
   const byContains = await prisma.product.findFirst({
@@ -610,7 +609,10 @@ export async function executeDeleteManyProducts(
         : "No hay productos válidos para eliminar.",
     };
   }
-  const { count } = await inventoryService.deleteManyProducts(storeId, productIds);
+  const { count } = await inventoryService.removeManyProductsFromStore(
+    storeId,
+    productIds,
+  );
   const msg =
     notFound.length > 0
       ? `Eliminados ${count} productos. No encontrados: ${notFound.join(", ")}.`
@@ -706,7 +708,10 @@ export async function executeUpdateProduct(
   if (params.brand !== undefined)
     productData.brand = params.brand?.trim() || null;
   if (Object.keys(productData).length > 0) {
-    await prisma.product.update({ where: { id: product.id }, data: productData });
+    await prisma.product.update({
+      where: { id: product.id },
+      data: productData,
+    });
   }
   if (params.salePriceGross != null) {
     await prisma.storeProduct.updateMany({

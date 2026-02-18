@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
+import { useStoreOptional } from "@/contexts/StoreContext";
 import { fetcher } from "../lib/api-client";
 import type {
   Product,
@@ -15,13 +16,16 @@ import type {
 
 export function useInventory(q?: string, initialData?: Product[]) {
   const { getToken } = useAuth();
+  const { storeId } = useStoreOptional() ?? { storeId: null };
 
   return useQuery({
-    queryKey: ["inventory", q],
+    queryKey: ["inventory", storeId ?? "", q],
     queryFn: async () => {
       const token = await getToken();
-      const url = q ? `/api/v1/inventory?q=${encodeURIComponent(q)}` : '/api/v1/inventory';
-      return fetcher<Product[]>(url, token);
+      const url = q
+        ? `/api/v1/inventory?q=${encodeURIComponent(q)}`
+        : "/api/v1/inventory";
+      return fetcher<Product[]>(url, token, { storeId });
     },
     initialData,
   });
@@ -30,14 +34,29 @@ export function useInventory(q?: string, initialData?: Product[]) {
 export function useAdjustStock() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
+  const { storeId: contextStoreId } = useStoreOptional() ?? { storeId: null };
 
   return useMutation({
-    mutationFn: async ({ productId, data }: { productId: string; data: AdjustStockInput }) => {
+    mutationFn: async ({
+      productId,
+      data,
+      storeId: paramStoreId,
+    }: {
+      productId: string;
+      data: AdjustStockInput;
+      storeId?: string;
+    }) => {
       const token = await getToken();
-      return fetcher<InventoryAdjustment>(`/api/v1/inventory/${productId}/adjust`, token, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      const storeId = paramStoreId ?? contextStoreId ?? "";
+      return fetcher<InventoryAdjustment>(
+        `/api/v1/inventory/${productId}/adjust?storeId=${storeId}`,
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify(data),
+          storeId: storeId || undefined,
+        },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
@@ -47,15 +66,17 @@ export function useAdjustStock() {
 
 export function useSearchCatalog(query: string) {
   const { getToken } = useAuth();
+  const { storeId } = useStoreOptional() ?? { storeId: null };
   const q = query.trim();
   return useQuery({
-    queryKey: ["inventory", "catalog", q],
+    queryKey: ["inventory", "catalog", storeId ?? "", q],
     queryFn: async () => {
       const token = await getToken();
       if (!q || q.length < 2) return [] as CatalogProduct[];
       return fetcher<CatalogProduct[]>(
         `/api/v1/inventory/catalog?q=${encodeURIComponent(q)}`,
         token,
+        { storeId },
       );
     },
     enabled: q.length >= 2,
@@ -66,6 +87,7 @@ export function useSearchCatalog(query: string) {
 export function useAddProductToStore() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
+  const { storeId } = useStoreOptional() ?? { storeId: null };
 
   return useMutation({
     mutationFn: async (data: AddProductToStoreInput) => {
@@ -73,6 +95,7 @@ export function useAddProductToStore() {
       return fetcher<Product>("/api/v1/inventory/catalog/add", token, {
         method: "POST",
         body: JSON.stringify(data),
+        storeId,
       });
     },
     onSuccess: () => {
@@ -84,6 +107,7 @@ export function useAddProductToStore() {
 export function useCreateProduct() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
+  const { storeId } = useStoreOptional() ?? { storeId: null };
 
   return useMutation({
     mutationFn: async (data: CreateProductInput) => {
@@ -91,6 +115,7 @@ export function useCreateProduct() {
       return fetcher<Product>("/api/v1/inventory", token, {
         method: "POST",
         body: JSON.stringify(data),
+        storeId,
       });
     },
     onSuccess: () => {
@@ -102,6 +127,7 @@ export function useCreateProduct() {
 export function useUpdateProduct() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
+  const { storeId } = useStoreOptional() ?? { storeId: null };
 
   return useMutation({
     mutationFn: async ({
@@ -115,6 +141,7 @@ export function useUpdateProduct() {
       return fetcher<Product>(`/api/v1/inventory/${productId}`, token, {
         method: "PATCH",
         body: JSON.stringify(data),
+        storeId,
       });
     },
     onSuccess: () => {
@@ -126,12 +153,14 @@ export function useUpdateProduct() {
 export function useDeleteProduct() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
+  const { storeId } = useStoreOptional() ?? { storeId: null };
 
   return useMutation({
     mutationFn: async (productId: string) => {
       const token = await getToken();
       return fetcher<void>(`/api/v1/inventory/${productId}`, token, {
         method: "DELETE",
+        storeId,
       });
     },
     onSuccess: () => {
@@ -143,6 +172,7 @@ export function useDeleteProduct() {
 export function useUploadProductImage() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
+  const { storeId } = useStoreOptional() ?? { storeId: null };
 
   return useMutation({
     mutationFn: async ({
@@ -155,11 +185,11 @@ export function useUploadProductImage() {
       const token = await getToken();
       const form = new FormData();
       form.append("file", file);
-      return fetcher<Product>(
-        `/api/v1/inventory/${productId}/image`,
-        token,
-        { method: "POST", body: form }
-      );
+      return fetcher<Product>(`/api/v1/inventory/${productId}/image`, token, {
+        method: "POST",
+        body: form,
+        storeId,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
@@ -170,15 +200,15 @@ export function useUploadProductImage() {
 export function useDeleteProductImage() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
+  const { storeId } = useStoreOptional() ?? { storeId: null };
 
   return useMutation({
     mutationFn: async (productId: string) => {
       const token = await getToken();
-      return fetcher<Product>(
-        `/api/v1/inventory/${productId}/image`,
-        token,
-        { method: "DELETE" }
-      );
+      return fetcher<Product>(`/api/v1/inventory/${productId}/image`, token, {
+        method: "DELETE",
+        storeId,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });

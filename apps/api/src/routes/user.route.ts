@@ -42,6 +42,27 @@ app.get("/", async (c) => {
 });
 
 /**
+ * GET /stores - List stores the current user is a member of.
+ */
+app.get("/stores", async (c) => {
+  const session = await getAuth(c);
+  if (!session || !session.userId) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const user = await resolveUserByClerkId(session.userId);
+  if (!user) {
+    return c.json({ error: "User not found" }, 404);
+  }
+  const members = await prisma.storeMember.findMany({
+    where: { userId: user.id },
+    include: { store: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const stores = members.map((m) => m.store);
+  return c.json(stores);
+});
+
+/**
  * PATCH / - Update user profile, preferences, and/or complete onboarding.
  */
 app.patch("/", async (c) => {

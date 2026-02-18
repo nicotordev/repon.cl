@@ -200,6 +200,67 @@
     }
   }
 
+  /* Chat bubbles & voice */
+  @keyframes chat-bubble-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes mic-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 oklch(0.55 0.18 255 / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 12px oklch(0.55 0.18 255 / 0);
+    }
+  }
+
+  @keyframes mic-recording {
+    0%,
+    100% {
+      box-shadow: 0 0 0 2px oklch(0.62 0.25 27 / 0.5);
+    }
+    50% {
+      box-shadow: 0 0 0 14px oklch(0.62 0.25 27 / 0);
+    }
+  }
+
+  .chat-bubble-enter {
+    animation: chat-bubble-in 0.25s ease-out forwards;
+  }
+
+  .typing-cursor::after {
+    content: "";
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    margin-left: 2px;
+    background: currentColor;
+    animation: blink 0.8s step-end infinite;
+    vertical-align: text-bottom;
+  }
+
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .animate-mic-pulse {
+    animation: mic-pulse 1.8s ease-in-out infinite;
+  }
+
+  .animate-mic-recording {
+    animation: mic-recording 1s ease-in-out infinite;
+  }
+
   .card-premium {
     @apply bg-card border border-border shadow-sm rounded-xl transition-all;
   }

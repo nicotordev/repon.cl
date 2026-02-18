@@ -57,10 +57,63 @@ export function getMaxFileBytes(): number {
   return MAX_FILE_BYTES;
 }
 
+type R2ErrorCode =
+  | "R2_NOT_CONFIGURED"
+  | "R2_BUCKET_NOT_FOUND"
+  | "R2_ACCESS_DENIED"
+  | "R2_UPLOAD_FAILED";
+
+export class R2UploadError extends Error {
+  status: number;
+  code: R2ErrorCode;
+
+  constructor(message: string, status: number, code: R2ErrorCode) {
+    super(message);
+    this.name = "R2UploadError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+function toR2UploadError(err: unknown): R2UploadError {
+  const code =
+    typeof err === "object" && err && "Code" in err && typeof (err as { Code?: unknown }).Code === "string"
+      ? (err as { Code: string }).Code
+      : typeof err === "object" && err && "name" in err && typeof (err as { name?: unknown }).name === "string"
+        ? (err as { name: string }).name
+        : "Unknown";
+
+  if (code === "NoSuchBucket") {
+    return new R2UploadError(
+      "El bucket R2 no existe. Revisa R2_BUCKET_NAME en la API.",
+      503,
+      "R2_BUCKET_NOT_FOUND",
+    );
+  }
+
+  if (
+    code === "AccessDenied" ||
+    code === "InvalidAccessKeyId" ||
+    code === "SignatureDoesNotMatch"
+  ) {
+    return new R2UploadError(
+      "No se pudo autenticar contra R2. Revisa credenciales de la API.",
+      503,
+      "R2_ACCESS_DENIED",
+    );
+  }
+
+  return new R2UploadError(
+    "Error subiendo imagen a R2.",
+    502,
+    "R2_UPLOAD_FAILED",
+  );
+}
+
 /**
  * Upload a product image to R2.
  * Key pattern: products/{storeId}/{productId}/{uuid}.{ext}
- * Returns the public URL of the uploaded object, or null if R2 is not configured or upload fails.
+ * Returns the public URL of the uploaded object.
  */
 export async function uploadProductImage(params: {
   storeId: string;
@@ -68,9 +121,15 @@ export async function uploadProductImage(params: {
   buffer: Buffer;
   contentType: string;
   originalFilename?: string;
-}): Promise<string | null> {
+}): Promise<string> {
   const client = getClient();
-  if (!client || !publicBaseUrl) return null;
+  if (!client || !publicBaseUrl || !bucketName) {
+    throw new R2UploadError(
+      "Subida de imágenes no configurada (R2).",
+      503,
+      "R2_NOT_CONFIGURED",
+    );
+  }
 
   const ext =
     params.contentType === "image/png"
@@ -94,8 +153,11 @@ export async function uploadProductImage(params: {
     );
     return `${publicBaseUrl}/${key}`;
   } catch (err) {
-    console.error("[r2.service] uploadProductImage failed:", err);
-    return null;
+    const mapped = toR2UploadError(err);
+    console.error(
+      `[r2.service] uploadProductImage failed (${mapped.code}): ${mapped.message}`,
+    );
+    throw mapped;
   }
 }
 

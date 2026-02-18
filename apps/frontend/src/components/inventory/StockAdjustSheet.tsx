@@ -13,6 +13,7 @@ import { useAdjustStock } from "@/hooks/use-inventory";
 import type { Product } from "@/lib/backend";
 import { useInventoryStore } from "@/store/inventory.store";
 import { useUIStore } from "@/store/ui.store";
+import { useStoreOptional } from "@/contexts/StoreContext";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -26,6 +27,7 @@ export function StockAdjustSheet({ products }: Props) {
   const closeSheet = useUIStore((s) => s.closeSheet);
   const selectedId = useInventoryStore((s) => s.selectedId);
   const setSelectedId = useInventoryStore((s) => s.setSelectedId);
+  const storeContext = useStoreOptional();
 
   const product = products.find((p) => p.id === selectedId);
   const [value, setValue] = useState(0);
@@ -58,6 +60,7 @@ export function StockAdjustSheet({ products }: Props) {
       adjustStock.mutate(
         {
           productId: selectedId,
+          storeId: storeContext?.storeId ?? "",
           data: {
             quantityDelta,
             reason: quantityDelta > 0 ? "COUNT_CORRECTION" : "DAMAGE", // Simplified for now
